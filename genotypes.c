@@ -34,13 +34,9 @@ Array_chars generateGenotypes(Array_char letters){
     }
     insertArray(genotype, char, '\0');
     counter(count, &first0);
-    for(int i = 0; i < count.used; i++){
-      printf("%d", count.data[i]);
-    }
-    printf("\n");
     insertArray(strList, Array_char, genotype);
   }
-
+  freeArray(count);
   return strList;
 }
 
