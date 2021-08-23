@@ -2,6 +2,7 @@
 #include "global.h"
 #include "genotypes.h"
 #include <math.h>
+#include <ncurses.h>
 
 GtkBuilder *builder; 
 GtkWidget *window;
@@ -30,6 +31,9 @@ Array_char letters;
 Array_chars strList;
 Array_chars rbtnNames;
 Array_chars headersMendel;
+Array_chars gene;
+Array_char  temp;
+Array_char alpha;
 
 
 enum Role{FATHER, MOTHER};
@@ -46,14 +50,27 @@ void on_father_toggled(GtkToggleButton* w);
 void on_mother_toggled(GtkToggleButton* w);
 
 int main(int argc, char *argv[]){
+
+  initArray(gene, Array_char, 100);
+
+  initArray(temp, char, 100);
+
   initArray(letters, char, 10);
   initArray(roles, enum Role, 10);
   initArray(rbtnNames, Array_char, 10);
-  insertArray(letters, char, 'A');
-  insertArray(letters, char, 'B');
-  insertArray(letters, char, 'C');
-  insertArray(letters, char, 'D');
-  insertArray(letters, char, 'E');
+
+
+  initArray(alpha, char, 10);
+  insertArray(alpha, char, 'A');
+  insertArray(alpha, char, 'B');
+  insertArray(alpha, char, 'C');
+  insertArray(alpha, char, 'D');
+  insertArray(alpha, char, 'E');
+  insertArray(alpha, char, 'F');
+  insertArray(alpha, char, 'G');
+  insertArray(alpha, char, 'H');
+  insertArray(alpha, char, 'I');
+  insertArray(alpha, char, 'J');
 
   gtk_init(&argc, &argv);
 
@@ -78,6 +95,49 @@ void on_window_destroy(){
   freeArrayP(strList);
   freeArrayP(rbtnNames);
   gtk_main_quit();
+}
+
+
+void on_btn_loadFile_clicked(){
+
+  char caracter;
+
+  FILE * flujo = fopen ("prueba1.txt" ,"rb");
+  if (flujo == NULL){
+    perror ("Error");
+
+  }
+
+
+  while (feof(flujo) == 0){
+
+    caracter = fgetc(flujo);
+
+
+    if(temp.used < 1){
+      insertArray(temp,char,caracter);
+    }
+    if (caracter == 10){
+      caracter = fgetc(flujo);
+      if (caracter >= 65 && caracter <= 122){
+          insertArray(temp,char,caracter);
+      }
+
+    }
+
+    printf("%c", caracter );
+
+  }
+
+  for (int i = 0; i<temp.used;i++){
+    insertArray(letters, char, temp.data[i]);
+    printf("%c",temp.data[i]);
+  }
+
+  fillGridGenotypes();
+  fillParentsCbx();
+  fclose(flujo);
+
 }
 
 void on_btn_nFeatures_clicked(GtkButton *b){
@@ -237,3 +297,4 @@ void on_btn_mendel_clicked(GtkButton *b){
   //fillMendelGrid(fatherTxt, motherTxt);
 }
 //https://www.youtube.com/watch?v=SvEBHBRept8&list=PLmMgHNtOIstZEvqYJncYUx52n8_OV0uWy&index=25
+
