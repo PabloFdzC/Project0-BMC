@@ -6,7 +6,7 @@
 
 GtkBuilder *builder; 
 GtkWidget *window;
-GtkStack *stack;
+GtkStack  *stack;
 GtkWidget *switcher;
 
 GtkWidget *btn_loadFile;
@@ -20,12 +20,14 @@ GtkWidget *txt_dominantTrait;
 GtkWidget *txt_recesiveLetter;
 GtkWidget *txt_recesiveTrait;
 GtkWidget *btn_saveTrait;
+GtkWidget *btn_chooseFile;
 
 GtkWidget *lst_traits;
 
 GtkWidget *grid_mendel;
 
 char tmp[128];
+char file[200];
 
 Array_char letters;
 Array_chars strList;
@@ -82,6 +84,8 @@ int main(int argc, char *argv[]){
   gtk_window_maximize(GTK_WINDOW(window));
   gtk_builder_connect_signals(builder, NULL);
 
+  btn_chooseFile = GTK_WIDGET(gtk_builder_get_object(builder,"file1"));
+
   gtk_widget_show(window);
   gtk_main();
 
@@ -97,12 +101,17 @@ void on_window_destroy(){
   gtk_main_quit();
 }
 
+void on_btn_chooseFile_file_set(GtkFileChooserButton *f){
+
+  strcpy(file,gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(f)));
+  printf("file name = %s\n",gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(f)));
+}
+
 
 void on_btn_loadFile_clicked(){
 
   char caracter;
-
-  FILE * flujo = fopen ("prueba1.txt" ,"rb");
+  FILE * flujo = fopen (file ,"rb");
   if (flujo == NULL){
     perror ("Error");
 
