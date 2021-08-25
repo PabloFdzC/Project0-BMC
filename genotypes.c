@@ -16,19 +16,19 @@ Array_chars generateGenotypes(Array_char letters){
   for(int i = 0; i < totComb; i++){
     Array_char genotype;
     initArray(genotype, char, totLet);
-    for(int j = 0; j < totLet-1; j++){
+    for(int j = totLet-2; j >= 0; j--){
       even = j % 2 == 0;
       if(count.data[j]){
         if(even){
-          insertArray(genotype, char, tolower(letters.data[j/2]));
+          insertArray(genotype, char, tolower(letters.data[letters.used-1-j/2]));
         } else {
-          insertArray(genotype, char, tolower(letters.data[(j-1)/2]));
+          insertArray(genotype, char, tolower(letters.data[letters.used-1-(j-1)/2]));
         }
       } else {
         if(even){
-          insertArray(genotype, char, letters.data[j/2]);
+          insertArray(genotype, char, letters.data[letters.used-1-j/2]);
         } else {
-          insertArray(genotype, char, letters.data[(j-1)/2]);
+          insertArray(genotype, char, letters.data[letters.used-1-(j-1)/2]);
         }
       }
     }
