@@ -33,7 +33,7 @@ int grid_mendelRows = 0;
 char tmp[128];
 char file[200];
 
-Array_chars strList;
+Array_chars strList = {NULL, 0, 0};
 Array_chars rbtnNames;
 
 Array_chars headersMendel;
@@ -48,10 +48,9 @@ enum Role{FATHER, MOTHER};
 typedef Array(enum Role) Array_Role;
 Array_Role roles;
 
-bool done = false;
-bool done2 = false;
+bool doneGenotypes = false;
+bool doneParentsCbx = false;
 bool done3 = false;
-int gridDone = 0;
 bool isPhenotypeSelected = false;
 
 Array_chars colors;
@@ -89,10 +88,10 @@ int main(int argc, char *argv[]){
   
   insertArray(alpha, char, 'A');
   insertArray(alpha, char, 'B');
-  insertArray(alpha, char, 'C');
-  insertArray(alpha, char, 'D');
-  insertArray(alpha, char, 'E');
-  insertArray(alpha, char, 'F');
+  //insertArray(alpha, char, 'C');
+  //insertArray(alpha, char, 'D');
+  //insertArray(alpha, char, 'E');
+  //insertArray(alpha, char, 'F');
   // insertArray(alpha, char, 'G');
   // insertArray(alpha, char, 'H');
   // insertArray(alpha, char, 'I');
@@ -141,7 +140,10 @@ void on_btn_chooseFile_file_set(GtkFileChooserButton *f){
 
 
 void on_btn_loadFile_clicked(){
-
+  doneGenotypes = false;
+  doneParentsCbx = false;
+  deleteAllArray(temp);
+  deleteAllArray(alpha);
   char caracter;
   FILE * flujo = fopen (file ,"rb");
   if (flujo == NULL){
@@ -149,11 +151,12 @@ void on_btn_loadFile_clicked(){
 
   }
 
-
+  int i = 0;
   while (feof(flujo) == 0){
 
     caracter = fgetc(flujo);
-
+    i++;
+    printf("%c, %d\n",caracter, i);
 
     if(temp.used < 1){
       insertArray(temp,char,caracter);
@@ -169,16 +172,12 @@ void on_btn_loadFile_clicked(){
     printf("%c", caracter );
 
   }
-
   for (int i = 0; i<temp.used;i++){
     insertArray(alpha, char, temp.data[i]);
     printf("%c",temp.data[i]);
   }
 
-  fillGridGenotypes();
-  fillParentsCbx();
   fclose(flujo);
-
 }
 
 void on_btn_nFeatures_clicked(GtkButton *b){
@@ -199,8 +198,8 @@ void on_stack_set_focus_child(GtkContainer* container, GtkWidget* child){
 }
 
 void fillParentsCbx(){
-  if(!done2){
-    done2 = true;
+  if(!doneParentsCbx){
+    doneParentsCbx = true;
     if(strList.used > 0){
       GtkListStore *liststoreF;
       GtkListStore *liststoreM;
@@ -234,8 +233,11 @@ void fillParentsCbx(){
 }
 
 void fillGridGenotypes(){
-  if(!done){
-    done = true;
+  if(!doneGenotypes){
+    doneGenotypes = true;
+    if(strList.used > 0){
+      freeArrayP(strList);
+    }
     strList = generateGenotypes(alpha);
 
     deleteAllArray(roles);
@@ -244,8 +246,8 @@ void fillGridGenotypes(){
     int nameL;
     
     grid_genotypes = GTK_WIDGET(gtk_builder_get_object(builder, "grid_genotypes"));
-
-    for(int row = 0; row < strList.used; row++){
+    int row = 0;
+    for(; row < strList.used; row++){
       nameL = snprintf( NULL, 0, "%d", row ) + 1;
       Array_char name;
       initArray(name, char, nameL);
@@ -253,20 +255,30 @@ void fillGridGenotypes(){
       name.used = nameL;
       name.data[nameL-1] = '\0';
       insertArray(rbtnNames, Array_char, name);
+      GtkWidget *rBtn1 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 1, row);
+      GtkWidget *rBtn2 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 2, row);
+      if(rBtn1){
+        gtk_button_set_label(GTK_BUTTON(rBtn1), strList.data[row].data);
+        gtk_button_set_label(GTK_BUTTON(rBtn2), strList.data[row].data);
+        gtk_widget_set_visible(GTK_WIDGET(rBtn1), TRUE);
+        gtk_widget_set_visible(GTK_WIDGET(rBtn2), TRUE);
+      }else{
+        gtk_grid_insert_row(GTK_GRID(grid_genotypes), row);
+        rBtn1 = gtk_radio_button_new_with_label_from_widget(NULL, strList.data[row].data);
+        rBtn2 = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rBtn1), strList.data[row].data);
+        gtk_widget_set_name(GTK_WIDGET(rBtn1), name.data);
+        gtk_widget_set_name(GTK_WIDGET(rBtn2), name.data);
+        gtk_grid_attach(GTK_GRID(grid_genotypes), rBtn1, 1, row, 1, 1);
+        gtk_grid_attach(GTK_GRID(grid_genotypes), rBtn2, 2, row, 1, 1);
+      }
 
-      gtk_grid_insert_row(GTK_GRID(grid_genotypes), row);
+      gtk_widget_set_tooltip_text(rBtn1, strList.data[row].data); // Creates tooltip
+      gtk_widget_set_tooltip_text(rBtn2, strList.data[row].data); // Creates tooltip
       
-      GtkWidget *rBtn1 = gtk_radio_button_new_with_label_from_widget(NULL, strList.data[row].data);
-      GtkWidget *rBtn2 = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rBtn1), strList.data[row].data);
-
-      gtk_widget_set_name(GTK_WIDGET(rBtn1), name.data);
-      gtk_widget_set_name(GTK_WIDGET(rBtn2), name.data);
 
       g_signal_connect(rBtn1, "toggled", G_CALLBACK(on_father_toggled), NULL);
       g_signal_connect(rBtn2, "toggled", G_CALLBACK(on_mother_toggled), NULL);
 
-      gtk_grid_attach(GTK_GRID(grid_genotypes), rBtn1, 1, row, 1, 1);
-      gtk_grid_attach(GTK_GRID(grid_genotypes), rBtn2, 2, row, 1, 1);
       gtk_widget_show(rBtn1);
       gtk_widget_show(rBtn2);
 
@@ -275,8 +287,21 @@ void fillGridGenotypes(){
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rBtn2), TRUE);
       } else {
         insertArray(roles, enum Role, FATHER);
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rBtn1), TRUE);
       }
     }
+    while(true){
+      GtkWidget *rBtn1 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 1, row);
+      GtkWidget *rBtn2 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 2, row);
+      if(rBtn1){
+        gtk_widget_set_visible(GTK_WIDGET(rBtn1), FALSE);
+        gtk_widget_set_visible(GTK_WIDGET(rBtn2), FALSE);
+        row++;
+      } else {
+        break;
+      }
+    }
+    
     
   }
 }
@@ -300,6 +325,7 @@ void changeRole(GtkToggleButton* w, enum Role r){
   char *name = gtk_widget_get_name(GTK_WIDGET(w));
   n = strtol(name, &name, 10);
   roles.data[n] = r;
+  doneParentsCbx = false;
 }
 
 void on_father_toggled(GtkToggleButton* w){
@@ -319,13 +345,13 @@ void fillMendelGrid(gchar *fatherTxt, gchar *motherTxt){
 
   int maxLet = strlen(fatherTxt)/2;
   int total = (int)pow(2.0, (double)maxLet);
-
   if(grid_mendelRows != total){
-    if(grid_mendelRows != 0){
+    if(grid_mendelRows != 0 && grid_mendelRows > total){
       gtk_widget_destroy(grid_mendel);
       grid_mendel = gtk_grid_new();
       GtkWidget *vport_mendel = GTK_WIDGET(gtk_builder_get_object(builder, "vport_mendel"));
       gtk_container_add(GTK_CONTAINER(vport_mendel), grid_mendel);
+      gtk_widget_show(GTK_WIDGET(grid_mendel));
     }
     gtk_grid_set_row_spacing(GTK_GRID(grid_mendel), 10);
     gtk_grid_set_column_spacing(GTK_GRID(grid_mendel), 10);
@@ -371,29 +397,35 @@ void createMendelGrid(int total){
     initDescendants();
   }
   grid_mendelRows = total;
-  for(int i = 0; i < total; i++){
-    gtk_grid_insert_row(GTK_GRID(grid_mendel), i);
-    gtk_grid_insert_column(GTK_GRID(grid_mendel), i);
-  }
-
-  for(int row = 0; row <= total; row++){
-    for(int col = 0; col <= total; col++){
-      GtkWidget* cell = gtk_frame_new("");
-      gtk_frame_set_label_align (GTK_FRAME(cell), 0.5, 0.5);
-      gtk_grid_attach(GTK_GRID(grid_mendel), cell, col, row, 1, 1);
-      gtk_widget_show(cell);
+  for(int i = 0; i <= total; i++){
+    GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), i, i);
+    if(!cell){
+      gtk_grid_insert_row(GTK_GRID(grid_mendel), i);
+      gtk_grid_insert_column(GTK_GRID(grid_mendel), i);
     }
   }
+  for(int row = 0; row <= total; row++){
+    for(int col = 0; col <= total; col++){
+      GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), col, row);
+      if(!cell){
+        cell = gtk_frame_new("");
+        gtk_frame_set_label_align(GTK_FRAME(cell), 0.5, 0.5);
+        gtk_grid_attach(GTK_GRID(grid_mendel), cell, col, row, 1, 1);
+        gtk_widget_show(cell);
+      }
+    }
+  }
+  
 }
 
 void createMendelHeaders(gchar *fatherTxt, gchar *motherTxt, int maxLet, int total){
+  int reuseX = 0;
+  int reuseY = 0;
   if(headersMendelX.used > 0){
-    freeArrayP(headersMendelX);
-    initArray(headersMendelX, Array_char, total);
+    reuseX = headersMendelX.used;
   }
   if(headersMendelY.used > 0){
-    freeArrayP(headersMendelY);
-    initArray(headersMendelY, Array_char, total);
+    reuseY = headersMendelY.used;
   }
   Array_int pattern;
   Array_int patternMax;
@@ -407,12 +439,21 @@ void createMendelHeaders(gchar *fatherTxt, gchar *motherTxt, int maxLet, int tot
     insertArray(patternIndex, int, i*2-2);
   }
 
-  
   for(int i = 0; i < total; i++){
     Array_char headerX;
     Array_char headerY;
-    initArray(headerX, char, maxLet+1);
-    initArray(headerY, char, maxLet+1);
+    if(i < reuseX){
+      headerX = headersMendelX.data[i];
+      deleteAllArray(headerX);
+    } else {
+      initArray(headerX, char, maxLet+1);
+    }
+    if(i < reuseY){
+      headerY = headersMendelY.data[i];
+      deleteAllArray(headerY);
+    } else {
+      initArray(headerY, char, maxLet+1);
+    }
     for(int j = 0; j < maxLet; j++){
       insertArray(headerX, char, fatherTxt[patternIndex.data[j]]);
       insertArray(headerY, char, motherTxt[patternIndex.data[j]]);
@@ -433,8 +474,16 @@ void createMendelHeaders(gchar *fatherTxt, gchar *motherTxt, int maxLet, int tot
     }
     insertArray(headerX, char, '\0');
     insertArray(headerY, char, '\0');
-    insertArray(headersMendelX, Array_char, headerX);
-    insertArray(headersMendelY, Array_char, headerY);
+    if(i >= reuseX){
+      insertArray(headersMendelX, Array_char, headerX);
+    }else{
+      headersMendelX.data[i] = headerX;
+    }
+    if(i >= reuseY){
+      insertArray(headersMendelY, Array_char, headerY);
+    }else{
+      headersMendelY.data[i] = headerY;
+    }
   }
 
   freeArray(pattern);
@@ -465,8 +514,8 @@ void colorMendelGrid(){
         colorsCount.data[colorIndex]++;
       }
       colorsUsed.data[colorIndex] = colorIndex;
-      gtk_css_provider_load_from_data(provider, colors.data[colorIndex].data,-1,NULL); 
-      GtkStyleContext * context = gtk_widget_get_style_context(cell);   
+      gtk_css_provider_load_from_data(provider, colors.data[colorIndex].data,-1,NULL);
+      GtkStyleContext * context = gtk_widget_get_style_context(cell);
       gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_USER);
       cont++;
       g_object_unref (provider);
@@ -477,12 +526,6 @@ void colorMendelGrid(){
 
 void createColors(){
   int totColors = getMaxColor();
-  if(colorsUsed.size < totColors){
-    freeArray(colorsUsed);
-    freeArray(colorsCount);
-    initArray(colorsUsed, int, totColors);
-    initArray(colorsCount, int, totColors);
-  }
   srand ( time(NULL) ); 
   int red = (rand() % (255 - 60 + 1)) + 60;
   int green = (rand() % (255 - 60 + 1)) + 60;
