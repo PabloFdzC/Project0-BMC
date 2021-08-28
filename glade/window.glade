@@ -1,7 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.1 -->
+<!-- Generated with glade 3.22.2 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
+  <object class="GtkWindow" id="loadError">
+    <property name="can_focus">False</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child>
+      <object class="GtkStack">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin_left">88</property>
+            <property name="margin_bottom">2</property>
+            <property name="label" translatable="yes">ERROR SELECT A FILE OR FILL THE BLANKS                           .</property>
+            <property name="justify">center</property>
+            <property name="max_width_chars">22</property>
+          </object>
+          <packing>
+            <property name="name">page0</property>
+            <property name="title" translatable="yes">page0</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkWindow" id="window">
     <property name="can_focus">False</property>
     <signal name="destroy" handler="on_window_destroy" swapped="no"/>
@@ -9,7 +37,7 @@
       <placeholder/>
     </child>
     <child>
-      <object class="GtkBox">
+      <object class="GtkBox" id="boxMain">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="halign">baseline</property>
@@ -22,7 +50,7 @@
             <property name="valign">baseline</property>
             <signal name="set-focus-child" handler="on_stack_set_focus_child" swapped="no"/>
             <child>
-              <object class="GtkBox">
+              <object class="GtkBox" id="GtkBoxMain">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
@@ -54,6 +82,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <signal name="clicked" handler="on_btn_saveFile_clicked" swapped="no"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -72,6 +101,18 @@
                         <property name="expand">False</property>
                         <property name="fill">True</property>
                         <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="txt_file">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <signal name="changed" handler="on_txt_file_changed" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">3</property>
                       </packing>
                     </child>
                   </object>
@@ -116,6 +157,7 @@
                             <property name="can_focus">True</property>
                             <property name="max_length">2</property>
                             <property name="input_purpose">digits</property>
+                            <signal name="changed" handler="on_txt_nFeatures_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -129,6 +171,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">True</property>
+                            <signal name="clicked" handler="on_btn_nFeatures_clicked" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -179,6 +222,7 @@
                           <object class="GtkEntry" id="txt_dominantLetter">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <signal name="changed" handler="on_txt_dominantLetter_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -215,6 +259,7 @@
                           <object class="GtkEntry" id="txt_dominantTrait">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <signal name="changed" handler="on_txt_dominantTrait_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -251,6 +296,7 @@
                           <object class="GtkEntry" id="txt_recesiveLetter">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <signal name="changed" handler="on_txt_recesiveLetter_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -287,6 +333,7 @@
                           <object class="GtkEntry" id="txt_recesiveTrait">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <signal name="changed" handler="on_txt_recesiveTrait_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -309,6 +356,7 @@
                         <property name="receives_default">True</property>
                         <property name="halign">center</property>
                         <property name="valign">end</property>
+                        <signal name="clicked" handler="on_btn_saveTrait_clicked" swapped="no"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -324,6 +372,17 @@
                   </packing>
                 </child>
                 <child>
+                  <object class="GtkFixed" id="gtkFixed">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
                   <object class="GtkTreeView" id="lst_traits">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -334,7 +393,7 @@
                   <packing>
                     <property name="expand">True</property>
                     <property name="fill">True</property>
-                    <property name="position">3</property>
+                    <property name="position">4</property>
                   </packing>
                 </child>
               </object>
@@ -776,6 +835,16 @@
           </packing>
         </child>
       </object>
+    </child>
+  </object>
+  <object class="GtkWindow" id="windowTable">
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Treeview</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child>
+      <placeholder/>
     </child>
   </object>
 </interface>
