@@ -1,14 +1,21 @@
 #include <gtk/gtk.h>
 #include "global.h"
+#include <string.h>
 #include "genotypes.h"
 #include "descendants.h"
 #include "quicksort.h"
 #include <math.h>
-//#include <ncurses.h>
 
 GtkBuilder *builder;
 GtkBuilder *builder2; 
 GtkWidget *window;
+GtkWidget *window1;
+GtkWidget *windowTable;
+GtkWidget *loadError;
+GtkWidget *GtkBoxMain;
+GtkWidget *boxMain;
+GtkWidget *view;
+GtkWidget *gtkFixed;
 GtkStack  *stack;
 GtkWidget *switcher;
 
@@ -30,8 +37,89 @@ GtkWidget *lst_traits;
 GtkWidget *grid_mendel;
 int grid_mendelRows = 0;
 
+int check = 0;
+int checkError = 0;
+int genesIntro;
+int genesFinal;
+
+enum
+{
+  COL_GEN,
+  COL_DOMINANT,
+  COL_RECESIVE,
+  NUM_COLS
+} ;
+
+
+  GtkListStore  *store;
+  GtkTreeIter    iter;
+
+
+GtkTreeModel *
+create_and_fill_model (void)
+{
+
+  
+  store = gtk_list_store_new (NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+  return GTK_TREE_MODEL (store);
+}
+
+GtkWidget *
+create_view_and_model (void)
+{
+  GtkCellRenderer     *renderer;
+  GtkTreeModel        *model;
+  GtkWidget           *view;
+
+  view = gtk_tree_view_new ();
+
+  /* --- Column #1 --- */
+
+  renderer = gtk_cell_renderer_text_new ();
+  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
+                                               -1,      
+                                               "GEN",  
+                                               renderer,
+                                               "text", COL_GEN,
+                                               NULL);
+
+  /* --- Column #2 --- */
+
+  renderer = gtk_cell_renderer_text_new ();
+  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
+                                               -1,      
+                                               "DOMINANT",  
+                                               renderer,
+                                               "text", COL_DOMINANT,
+                                               NULL);
+
+    /* --- Column #3 --- */
+
+  renderer = gtk_cell_renderer_text_new ();
+  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
+                                               -1,      
+                                               "RECESIVE",  
+                                               renderer,
+                                               "text", COL_RECESIVE,
+                                               NULL);
+
+
+
+  model = create_and_fill_model ();
+
+  gtk_tree_view_set_model (GTK_TREE_VIEW (view), model);
+
+  return view;
+}
+
 char tmp[128];
 char file[200];
+char fileSave[100];
+
+char dominantL[25];
+char dominantT[25];
+char recesiveL[25];
+char recesiveT[25];
 
 Array_chars strList = {NULL, 0, 0};
 Array_chars rbtnNames;
@@ -86,8 +174,8 @@ int main(int argc, char *argv[]){
   colorsCount.used = 32;
   initDescendants();
   
-  insertArray(alpha, char, 'A');
-  insertArray(alpha, char, 'B');
+  //insertArray(alpha, char, 'A');
+  //insertArray(alpha, char, 'B');
   //insertArray(alpha, char, 'C');
   //insertArray(alpha, char, 'D');
   //insertArray(alpha, char, 'E');
@@ -103,9 +191,15 @@ int main(int argc, char *argv[]){
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "glade/window.glade", NULL);
 
+  windowTable = GTK_WIDGET(gtk_builder_get_object(builder, "windowTable"));
+  view = create_view_and_model ();
+  gtk_container_add (GTK_CONTAINER (windowTable), view);
+
+  loadError = GTK_WIDGET(gtk_builder_get_object(builder, "loadError"));
+
   window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
   stack = GTK_STACK(gtk_builder_get_object(builder, "stack"));
-  gtk_window_maximize(GTK_WINDOW(window));
+  //gtk_window_maximize(GTK_WINDOW(window));
   gtk_builder_connect_signals(builder, NULL);
 
   btn_chooseFile = GTK_WIDGET(gtk_builder_get_object(builder,"file1"));
@@ -135,57 +229,203 @@ void on_window_destroy(){
 void on_btn_chooseFile_file_set(GtkFileChooserButton *f){
 
   strcpy(file,gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(f)));
-  printf("file name = %s\n",gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(f)));
+  check = 1;
 }
 
 
 void on_btn_loadFile_clicked(){
-  doneGenotypes = false;
-  doneParentsCbx = false;
-  deleteAllArray(temp);
-  deleteAllArray(alpha);
-  char caracter;
-  FILE * flujo = fopen (file ,"rb");
-  if (flujo == NULL){
-    perror ("Error");
 
-  }
+  if(check == 1){
+      doneGenotypes = false;
+      doneParentsCbx = false;
+      deleteAllArray(temp);
+      deleteAllArray(alpha);
+      int check1 = 1;
+      int check2 = 0;
+      int check3 = 0;
+      char caracter;
+      char gen[25];
+      char dominant[25];
+      char recesive[25];
+      FILE * flujo = fopen (file ,"rb");
+      if (flujo == NULL){
+        perror ("Error");
 
-  int i = 0;
-  while (feof(flujo) == 0){
-
-    caracter = fgetc(flujo);
-    i++;
-    printf("%c, %d\n",caracter, i);
-
-    if(temp.used < 1){
-      insertArray(temp,char,caracter);
-    }
-    if (caracter == 10){
-      caracter = fgetc(flujo);
-      if (caracter >= 65 && caracter <= 122){
-          insertArray(temp,char,caracter);
       }
 
+      *gen = '\0';
+      *dominant = '\0';
+      *recesive = '\0';
+
+      while (feof(flujo) == 0){
+
+        caracter = fgetc(flujo);
+
+        if(temp.used < 1){
+          insertArray(temp,char,caracter);
+        }
+
+
+        if(check1 == 1 ){
+          strncat(gen, &caracter,1);
+          caracter = fgetc(flujo);
+          check1 = 0;
+        }
+
+        if (caracter == 44 && check2 == 0){
+            caracter = fgetc(flujo);
+            while(caracter != 44){
+              strncat(dominant, &caracter,1);
+              printf("%s\n",dominant);
+              caracter = fgetc(flujo);
+            }
+            check3 = 1;
+            check2 = 1;
+        }
+
+        if (caracter == 44 && check3 == 1){
+            caracter = fgetc(flujo);
+            while(caracter != 44){
+              strncat(recesive, &caracter,1);
+              printf("%s\n",dominant);
+              caracter = fgetc(flujo);
+            }
+            check2 = 0;
+            check3 = 0;
+
+
+        }
+
+
+        if (caracter == 10){
+
+          caracter = fgetc(flujo);
+
+          if (caracter >= 65 && caracter <= 122){
+              insertArray(temp,char,caracter);
+              strncat(gen, &caracter,1);
+              gtk_list_store_append (store, &iter);
+              gtk_list_store_set (store, &iter,
+                          COL_GEN, gen,
+                          COL_DOMINANT, dominant,
+                          COL_RECESIVE,recesive,
+                          -1);
+              *gen = '\0';
+              *dominant = '\0';
+              *recesive = '\0';
+            }
+
+          }
+
+
     }
 
-    printf("%c", caracter );
+    for (int i = 0; i<temp.used;i++){
+      insertArray(alpha, char, temp.data[i]);
+    }
+
+    fillGridGenotypes();
+    fillParentsCbx();
+    gtk_widget_show_all (windowTable);
+    fclose(flujo);
+  }
+
+  if(check == 0){
+
+    gtk_widget_show_all (loadError);
+
 
   }
-  for (int i = 0; i<temp.used;i++){
-    insertArray(alpha, char, temp.data[i]);
-    printf("%c",temp.data[i]);
-  }
 
-  fclose(flujo);
 }
 
+void on_txt_file_changed(GtkEntry *e){
+  *fileSave = '\0';
+  strcat(fileSave,gtk_entry_get_text(e));
+}
+
+
+void on_btn_saveFile_clicked(){
+}
+
+void on_btn_saveFile(char Pgen[25],char PdominantT[25],char PrecesiveT[25]){
+
+    FILE* fichero;
+    fichero = fopen(fileSave, "a+");
+    fputs(Pgen, fichero);
+    fputs(",",fichero);
+    fputs(PdominantT, fichero);
+    fputs(",",fichero);
+    fputs(PrecesiveT, fichero);
+    fputs(",\n",fichero);
+    fclose(fichero);
+    printf("Proceso completado");
+
+}
+
+
 void on_btn_nFeatures_clicked(GtkButton *b){
-  printf("%s\n",tmp);
+  genesIntro = tmp[0] - '0';
+  checkError = 1;
 }
 
 void on_txt_nFeatures_changed(GtkEntry *e){
-  sprintf(tmp, "entry:%s\n", gtk_entry_get_text(e));
+  *tmp = '\0';
+  strcat(tmp,gtk_entry_get_text(e));
+}
+
+void on_txt_dominantLetter_changed(GtkEntry *e){
+   *dominantL = '\0';
+   strcat(dominantL,gtk_entry_get_text(e));
+
+}
+
+void on_txt_dominantTrait_changed(GtkEntry *e){
+   *dominantT = '\0';
+   strcat(dominantT,gtk_entry_get_text(e));
+
+
+}
+
+void on_txt_recesiveLetter_changed(GtkEntry *e){
+   *recesiveL = '\0';
+   strcat(recesiveL,gtk_entry_get_text(e));
+
+}
+
+void on_txt_recesiveTrait_changed(GtkEntry *e){
+   *recesiveT = '\0';
+   strcat(recesiveT,gtk_entry_get_text(e));
+
+
+}
+
+void on_btn_saveTrait_clicked(){
+
+    if(checkError == 1){
+        gtk_list_store_append (store, &iter);
+
+      
+        gtk_list_store_set (store, &iter,
+                    COL_GEN, dominantL,
+                    COL_DOMINANT, dominantT,
+                    COL_RECESIVE,recesiveT,
+                    -1);
+        insertArray(alpha, char, dominantL[0]);
+        genesFinal += 1;
+        on_btn_saveFile(dominantL,dominantT,recesiveT);
+        gtk_widget_show_all (windowTable);
+
+        if (genesFinal == genesIntro){
+            fillGridGenotypes();
+        }
+    }
+
+    if(checkError == 0){
+      gtk_widget_show_all (loadError);
+    }
+
+
 }
 
 void on_stack_set_focus_child(GtkContainer* container, GtkWidget* child){
@@ -643,4 +883,5 @@ void on_percentage_window_focus(GtkWidget* self, GtkDirectionType direction, gpo
 }
 
 //https://www.youtube.com/watch?v=SvEBHBRept8&list=PLmMgHNtOIstZEvqYJncYUx52n8_OV0uWy&index=25
+
 
