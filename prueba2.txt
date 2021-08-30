@@ -1,7 +1,7 @@
-A,Alto,Bajo,
-G,Gordo,Flaco,
-L,Largo,Corto,
-C,Cabeza grande, Cabeza chica,
-E,Enano,Gigante,
-F,Recto,torcido,
-H,Luminoso,Apagado,
+A,Alto,Bajo
+G,Gordo,Flaco
+L,Largo,Corto
+C,Cabeza grande, Cabeza chica
+E,Enano,Gigante
+F,Recto,torcido
+H,Luminoso,Apagado

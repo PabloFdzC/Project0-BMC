@@ -10,6 +10,7 @@
 
 typedef Array(char) Array_char;
 typedef Array(Array_char) Array_chars;
+typedef Array(Array_chars) Array_chars2;
 typedef Array(int) Array_int;
 
 #endif

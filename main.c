@@ -7,10 +7,9 @@
 #include <math.h>
 
 GtkBuilder *builder;
-GtkBuilder *builder2; 
+GtkBuilder *builder2;
 GtkWidget *window;
 GtkWidget *window1;
-GtkWidget *windowTable;
 GtkWidget *loadError;
 GtkWidget *GtkBoxMain;
 GtkWidget *boxMain;
@@ -27,8 +26,8 @@ GtkWidget *txt_nFeatures;
 
 GtkWidget *txt_dominantLetter;
 GtkWidget *txt_dominantTrait;
-GtkWidget *txt_recesiveLetter;
-GtkWidget *txt_recesiveTrait;
+GtkWidget *txt_recessiveLetter;
+GtkWidget *txt_recessiveTrait;
 GtkWidget *btn_saveTrait;
 GtkWidget *btn_chooseFile;
 
@@ -44,73 +43,16 @@ int genesFinal;
 
 enum
 {
-  COL_GEN,
   COL_DOMINANT,
+  COL_DOMINANTT,
   COL_RECESIVE,
+  COL_RECESIVET,
   NUM_COLS
 } ;
 
 
-  GtkListStore  *store;
-  GtkTreeIter    iter;
-
-
-GtkTreeModel *
-create_and_fill_model (void)
-{
-
-  
-  store = gtk_list_store_new (NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
-  return GTK_TREE_MODEL (store);
-}
-
-GtkWidget *
-create_view_and_model (void)
-{
-  GtkCellRenderer     *renderer;
-  GtkTreeModel        *model;
-  GtkWidget           *view;
-
-  view = gtk_tree_view_new ();
-
-  /* --- Column #1 --- */
-
-  renderer = gtk_cell_renderer_text_new ();
-  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
-                                               -1,      
-                                               "GEN",  
-                                               renderer,
-                                               "text", COL_GEN,
-                                               NULL);
-
-  /* --- Column #2 --- */
-
-  renderer = gtk_cell_renderer_text_new ();
-  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
-                                               -1,      
-                                               "DOMINANT",  
-                                               renderer,
-                                               "text", COL_DOMINANT,
-                                               NULL);
-
-    /* --- Column #3 --- */
-
-  renderer = gtk_cell_renderer_text_new ();
-  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),
-                                               -1,      
-                                               "RECESIVE",  
-                                               renderer,
-                                               "text", COL_RECESIVE,
-                                               NULL);
-
-
-
-  model = create_and_fill_model ();
-
-  gtk_tree_view_set_model (GTK_TREE_VIEW (view), model);
-
-  return view;
-}
+GtkListStore  *store;
+GtkTreeIter    iter;
 
 char tmp[128];
 char file[200];
@@ -118,16 +60,18 @@ char fileSave[100];
 
 char dominantL[25];
 char dominantT[25];
-char recesiveL[25];
-char recesiveT[25];
+char recessiveL[25];
+char recessiveT[25];
 
 Array_chars strList = {NULL, 0, 0};
 Array_chars rbtnNames;
 
 Array_chars headersMendel;
 Array_chars gene;
-Array_char  temp;
-Array_char alpha;
+//Array_char  temp;
+Array_char domLettersC = {NULL, 0, 0};
+Array_chars domTraitsC = {NULL, 0, 0};
+Array_chars recTraitsC = {NULL, 0, 0};
 
 Array_chars headersMendelX;
 Array_chars headersMendelY;
@@ -146,74 +90,104 @@ Array_int colorsCount;
 Array_int colorsUsed;
 Array_chars percentages;
 
+int lastDescendantI = -1;
+int lastRow = 0;
+int lastCol = 0;
 
+int maxRows = 15;
+int maxCols = 8;
+typedef Array(GtkCssProvider*) Array_provider;
+Array_provider providers;
+Array_int providersIndex;
+
+void create_view_and_model();
+void fillTraitsTreeView();
 void fillGridGenotypes();
 void fillParentsCbx();
 void on_father_toggled(GtkToggleButton* w);
 void on_mother_toggled(GtkToggleButton* w);
-void createMendelGrid(int total);
+void createMendelGrid();
 void createMendelHeaders(gchar *fatherTxt, gchar *motherTxt, int maxLet, int total);
 void colorMendelGrid();
 void createColors();
+void createAllDescendants(int total);
+void fillMendelGridAux();
+void countColors();
 
 int main(int argc, char *argv[]){
-
-  //initArray(gene, Array_char, 100);
-
-  initArray(temp, char, 100);
-
-  initArray(alpha, char, 10);
   initArray(roles, enum Role, 10);
   initArray(rbtnNames, Array_char, 10);
   initArray(headersMendelX, Array_char, 32);
   initArray(headersMendelY, Array_char, 32);
   initArray(colors, Array_char, 32);
+  initArray(providers, GtkCssProvider*, 32);
+  initArray(providersIndex, int, 32);
   initArray(colorsCount, int, 32);
   initArray(colorsUsed, int, 32);
   colorsUsed.used = 32;
   colorsCount.used = 32;
-  initDescendants();
-  
-  //insertArray(alpha, char, 'A');
-  //insertArray(alpha, char, 'B');
-  //insertArray(alpha, char, 'C');
-  //insertArray(alpha, char, 'D');
-  //insertArray(alpha, char, 'E');
-  //insertArray(alpha, char, 'F');
-  // insertArray(alpha, char, 'G');
-  // insertArray(alpha, char, 'H');
-  // insertArray(alpha, char, 'I');
-  // insertArray(alpha, char, 'J');
-
+  initDescendants(32);
 
   gtk_init(&argc, &argv);
 
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "glade/window.glade", NULL);
 
-  windowTable = GTK_WIDGET(gtk_builder_get_object(builder, "windowTable"));
-  view = create_view_and_model ();
-  gtk_container_add (GTK_CONTAINER (windowTable), view);
 
   loadError = GTK_WIDGET(gtk_builder_get_object(builder, "loadError"));
 
   window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
   stack = GTK_STACK(gtk_builder_get_object(builder, "stack"));
-  //gtk_window_maximize(GTK_WINDOW(window));
+  grid_mendel = GTK_WIDGET(gtk_builder_get_object(builder, "grid_mendel"));
+  gtk_window_maximize(GTK_WINDOW(window));
   gtk_builder_connect_signals(builder, NULL);
+
+  create_view_and_model();
 
   btn_chooseFile = GTK_WIDGET(gtk_builder_get_object(builder,"file1"));
 
   gtk_widget_show(window);
+  createMendelGrid();
   gtk_main();
-
   return 0;
+}
+
+void create_view_and_model(){
+  GtkCellRenderer     *renderer;
+
+  view = GTK_WIDGET(gtk_builder_get_object(builder, "tv_traits"));
+  store = gtk_list_store_new (NUM_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,G_TYPE_STRING);
+
+  renderer = gtk_cell_renderer_text_new ();
+  gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW (view),-1,
+    "Dominant",renderer,"text", COL_DOMINANT,NULL);
+
+  renderer = gtk_cell_renderer_text_new ();
+  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),-1,
+    "Dominant trait",renderer,"text", COL_DOMINANTT,NULL);
+
+  renderer = gtk_cell_renderer_text_new ();
+  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),-1,
+    "Recesive",renderer,"text", COL_RECESIVE,NULL);
+  
+  gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (view),-1,
+    "Recesive trait",renderer,"text", COL_RECESIVET,NULL);
+
+  gtk_tree_view_set_model (GTK_TREE_VIEW (view), GTK_TREE_MODEL(store));
+  gtk_widget_show_all(view);
 }
 
 void on_window_destroy(){
   g_object_unref(builder);
-  freeArray(alpha);
-  freeArray(temp);
+  if(domLettersC.size != 0){
+    freeArray(domLettersC);
+  }
+  if(domTraitsC.size != 0){
+    freeArrayP(domTraitsC);
+  }
+  if(recTraitsC.size != 0){
+    freeArrayP(recTraitsC);
+  }
   freeArray(roles);
   freeArrayP(strList);
   freeArrayP(rbtnNames);
@@ -222,121 +196,129 @@ void on_window_destroy(){
   freeArray(colors);
   freeArray(colorsCount);
   freeArray(colorsUsed);
+  freeArray(providers);
+  freeArray(providersIndex);
   freeDescendants();
   gtk_main_quit();
 }
 
 void on_btn_chooseFile_file_set(GtkFileChooserButton *f){
-
   strcpy(file,gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(f)));
   check = 1;
 }
 
 
 void on_btn_loadFile_clicked(){
-
+  Array_char domLetters;
+  Array_chars domTraits;
+  Array_chars recTraits;
   if(check == 1){
-      doneGenotypes = false;
-      doneParentsCbx = false;
-      deleteAllArray(temp);
-      deleteAllArray(alpha);
-      int check1 = 1;
-      int check2 = 0;
-      int check3 = 0;
-      char caracter;
-      char gen[25];
-      char dominant[25];
-      char recesive[25];
-      FILE * flujo = fopen (file ,"rb");
-      if (flujo == NULL){
-        perror ("Error");
+    doneGenotypes = false;
+    doneParentsCbx = false;
+    initArray(domLetters, char, 10);
+    initArray(domTraits, Array_char, 10);
+    initArray(recTraits, Array_char, 10);
+    bool dLFilled = false;
+    bool dTFilled = false;
+    bool badFormat = false;
+    char c;
+    FILE * flujo = fopen (file ,"rb");
+    if (flujo == NULL){
+      perror ("Error");
+    }
 
+    for(c = fgetc(flujo); feof(flujo) == 0; c = fgetc(flujo)){
+      if(badFormat){
+        break;
       }
-
-      *gen = '\0';
-      *dominant = '\0';
-      *recesive = '\0';
-
-      while (feof(flujo) == 0){
-
-        caracter = fgetc(flujo);
-
-        if(temp.used < 1){
-          insertArray(temp,char,caracter);
-        }
-
-
-        if(check1 == 1 ){
-          strncat(gen, &caracter,1);
-          caracter = fgetc(flujo);
-          check1 = 0;
-        }
-
-        if (caracter == 44 && check2 == 0){
-            caracter = fgetc(flujo);
-            while(caracter != 44){
-              strncat(dominant, &caracter,1);
-              printf("%s\n",dominant);
-              caracter = fgetc(flujo);
-            }
-            check3 = 1;
-            check2 = 1;
-        }
-
-        if (caracter == 44 && check3 == 1){
-            caracter = fgetc(flujo);
-            while(caracter != 44){
-              strncat(recesive, &caracter,1);
-              printf("%s\n",dominant);
-              caracter = fgetc(flujo);
-            }
-            check2 = 0;
-            check3 = 0;
-
-
-        }
-
-
-        if (caracter == 10){
-
-          caracter = fgetc(flujo);
-
-          if (caracter >= 65 && caracter <= 122){
-              insertArray(temp,char,caracter);
-              strncat(gen, &caracter,1);
-              gtk_list_store_append (store, &iter);
-              gtk_list_store_set (store, &iter,
-                          COL_GEN, gen,
-                          COL_DOMINANT, dominant,
-                          COL_RECESIVE,recesive,
-                          -1);
-              *gen = '\0';
-              *dominant = '\0';
-              *recesive = '\0';
-            }
-
+      if(isspace(c)){
+        continue;
+      }
+      if(isalpha(c)){
+        if(!dLFilled){
+          if(c >= 65 && c <= 90){
+            insertArray(domLetters, char, c);
+            dLFilled = true;
+          } else {
+            badFormat = true;
+            break;
           }
-
-
+        } else if(!dTFilled){
+          Array_char dT;
+          initArray(dT, char, 10);
+          while(c != ','){
+            if(c == '\n' || feof(flujo)){
+              badFormat = true;
+              break;
+            }
+            if(isalpha(c) || (isspace(c) && c != '\n')){
+              insertArray(dT, char, c);
+            } else {
+              badFormat = true;
+              break;
+            }
+            c = fgetc(flujo);
+          }
+          if(dT.used == 0){
+            badFormat = true;
+          } else {
+            insertArray(dT, char, '\0');
+            insertArray(domTraits, Array_char, dT);
+            dTFilled = true;
+          }
+        } else {
+          Array_char rT;
+          initArray(rT, char, 10);
+          while(c != '\n'){
+            if(feof(flujo)){
+              break;
+            }
+            if(isalpha(c) || isspace(c)){
+              insertArray(rT, char, c);
+            } else {
+              badFormat = true;
+              break;
+            }
+            c = fgetc(flujo);
+          }
+          if(rT.used == 0){
+            badFormat = true;
+            break;
+          } else {
+            insertArray(rT, char, '\0');
+            insertArray(recTraits, Array_char, rT);
+            dLFilled = false;
+            dTFilled = false;
+          }
+        }
+      }
     }
-
-    for (int i = 0; i<temp.used;i++){
-      insertArray(alpha, char, temp.data[i]);
-    }
-
-    fillGridGenotypes();
-    fillParentsCbx();
-    gtk_widget_show_all (windowTable);
     fclose(flujo);
+    if(badFormat){
+      freeArrayP(domTraits);
+      freeArrayP(recTraits);
+      freeArray(domLetters);
+    } else {
+      domLettersC = domLetters;
+      domTraitsC = domTraits;
+      recTraitsC = recTraits;
+      fillTraitsTreeView();
+    }
   }
+}
 
-  if(check == 0){
-
-    gtk_widget_show_all (loadError);
-
-
+void fillTraitsTreeView(){
+  gtk_list_store_clear(store);
+  for(int i = 0; i < domLettersC.used; i++){
+    char d[8];
+    d[0] = domLettersC.data[i];
+    d[1] = '\0';
+    char r[8];
+    r[0] = domLettersC.data[i]+32;
+    r[1] = '\0';
+    gtk_list_store_append(store, &iter);
+    gtk_list_store_set(store, &iter,COL_DOMINANT, d,COL_DOMINANTT, domTraitsC.data[i].data,COL_RECESIVE,r,COL_RECESIVET,recTraitsC.data[i].data,-1);
   }
-
 }
 
 void on_txt_file_changed(GtkEntry *e){
@@ -346,9 +328,10 @@ void on_txt_file_changed(GtkEntry *e){
 
 
 void on_btn_saveFile_clicked(){
+
 }
 
-void on_btn_saveFile(char Pgen[25],char PdominantT[25],char PrecesiveT[25]){
+void on_btn_saveFile(char Pgen[25],char PdominantT[25],char PrecessiveT[25]){
 
     FILE* fichero;
     fichero = fopen(fileSave, "a+");
@@ -356,7 +339,7 @@ void on_btn_saveFile(char Pgen[25],char PdominantT[25],char PrecesiveT[25]){
     fputs(",",fichero);
     fputs(PdominantT, fichero);
     fputs(",",fichero);
-    fputs(PrecesiveT, fichero);
+    fputs(PrecessiveT, fichero);
     fputs(",\n",fichero);
     fclose(fichero);
     printf("Proceso completado");
@@ -383,21 +366,17 @@ void on_txt_dominantLetter_changed(GtkEntry *e){
 void on_txt_dominantTrait_changed(GtkEntry *e){
    *dominantT = '\0';
    strcat(dominantT,gtk_entry_get_text(e));
+}
 
+void on_txt_recessiveLetter_changed(GtkEntry *e){
+   *recessiveL = '\0';
+   strcat(recessiveL,gtk_entry_get_text(e));
 
 }
 
-void on_txt_recesiveLetter_changed(GtkEntry *e){
-   *recesiveL = '\0';
-   strcat(recesiveL,gtk_entry_get_text(e));
-
-}
-
-void on_txt_recesiveTrait_changed(GtkEntry *e){
-   *recesiveT = '\0';
-   strcat(recesiveT,gtk_entry_get_text(e));
-
-
+void on_txt_recessiveTrait_changed(GtkEntry *e){
+   *recessiveT = '\0';
+   strcat(recessiveT,gtk_entry_get_text(e));
 }
 
 void on_btn_saveTrait_clicked(){
@@ -407,14 +386,13 @@ void on_btn_saveTrait_clicked(){
 
       
         gtk_list_store_set (store, &iter,
-                    COL_GEN, dominantL,
-                    COL_DOMINANT, dominantT,
-                    COL_RECESIVE,recesiveT,
+                    COL_DOMINANT, dominantL,
+                    COL_DOMINANTT, dominantT,
+                    COL_RECESIVE,recessiveT,
                     -1);
-        insertArray(alpha, char, dominantL[0]);
+        insertArray(domLettersC, char, dominantL[0]);
         genesFinal += 1;
-        on_btn_saveFile(dominantL,dominantT,recesiveT);
-        gtk_widget_show_all (windowTable);
+        on_btn_saveFile(dominantL,dominantT,recessiveT);
 
         if (genesFinal == genesIntro){
             fillGridGenotypes();
@@ -478,7 +456,7 @@ void fillGridGenotypes(){
     if(strList.used > 0){
       freeArrayP(strList);
     }
-    strList = generateGenotypes(alpha);
+    strList = generateGenotypes(domLettersC);
 
     deleteAllArray(roles);
     GtkWidget *grid_genotypes;
@@ -581,39 +559,74 @@ void on_mother_toggled(GtkToggleButton* w){
 }
 
 void fillMendelGrid(gchar *fatherTxt, gchar *motherTxt){
-  grid_mendel = GTK_WIDGET(gtk_builder_get_object(builder, "grid_mendel"));
 
   int maxLet = strlen(fatherTxt)/2;
   int total = (int)pow(2.0, (double)maxLet);
-  if(grid_mendelRows != total){
-    if(grid_mendelRows != 0 && grid_mendelRows > total){
-      gtk_widget_destroy(grid_mendel);
-      grid_mendel = gtk_grid_new();
-      GtkWidget *vport_mendel = GTK_WIDGET(gtk_builder_get_object(builder, "vport_mendel"));
-      gtk_container_add(GTK_CONTAINER(vport_mendel), grid_mendel);
-      gtk_widget_show(GTK_WIDGET(grid_mendel));
-    }
-    gtk_grid_set_row_spacing(GTK_GRID(grid_mendel), 10);
-    gtk_grid_set_column_spacing(GTK_GRID(grid_mendel), 10);
-    createMendelGrid(total);
-  }
   createMendelHeaders(fatherTxt, motherTxt, maxLet, total);
-  for(int row = 0; row <= total; row++){
-    for(int col = 0; col <= total; col++){
+  createAllDescendants(total);
+  createColors();
+  fillMendelGridAux();
+}
+
+void fillMendelGridAux(){
+  int lRow = lastRow;
+  int lCol = lastCol;
+  int r=0,c=0;
+  for(int row = 0; row <= maxRows; row++){
+    lRow = row + lastRow;
+    for(int col = 0; col <= maxCols; col++){
       GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), col, row);
       if(row == 0 && col > 0){
-        gtk_frame_set_label(GTK_FRAME(cell), headersMendelX.data[col-1].data);
+        lCol = col + lastCol;
+        if(lCol < headersMendelX.used){
+          gtk_frame_set_label(GTK_FRAME(cell), headersMendelX.data[lCol].data);
+        } else {
+          gtk_frame_set_label(GTK_FRAME(cell), "");
+        }
       } else if(col == 0 && row > 0){
-        gtk_frame_set_label(GTK_FRAME(cell), headersMendelY.data[row-1].data);
+        if(lRow < headersMendelY.used){
+          gtk_frame_set_label(GTK_FRAME(cell), headersMendelY.data[lRow].data);
+        } else {
+          gtk_frame_set_label(GTK_FRAME(cell), "");
+        }
       } else if(row > 0 && col > 0){
-        Array_char d = createDescendant(headersMendelX.data[col-1], headersMendelY.data[row-1]);
-        gtk_frame_set_label(GTK_FRAME(cell), d.data);
+        if(lastRow == 0){
+          r = row-1;
+        } else {
+          r = row+lastRow-maxRows-1;
+        }
+        if(lastCol == 0){
+          c = col-1;
+        }else{
+          c = col+lastCol-maxCols-1;
+        }
+        Array_char d = getDescendant(r,c);
+        if(d.data == NULL){
+          gtk_frame_set_label(GTK_FRAME(cell), "");
+        } else {
+          gtk_frame_set_label(GTK_FRAME(cell), d.data);
+        }
       }
       gtk_frame_set_shadow_type(GTK_FRAME(cell), GTK_SHADOW_NONE);
       gtk_widget_set_vexpand(cell, TRUE);
     }
   }
+  lastRow = lRow;
+  lastCol = lCol;
   colorMendelGrid();
+}
+
+void createAllDescendants(int total){
+  if(hasDescendants()){
+    freeDescendants();
+    initDescendants(total);
+  }
+  grid_mendelRows = total;
+  for(int row = 0; row <total; row++){
+    for(int col = 0; col < total; col++){
+      createDescendant(headersMendelX.data[col], headersMendelY.data[row], row);
+    }
+  }
 }
 
 void on_btn_mendel_clicked(GtkButton *b){
@@ -631,21 +644,15 @@ void on_btn_mendel_clicked(GtkButton *b){
   fillMendelGrid(fatherTxt, motherTxt);
 }
 
-void createMendelGrid(int total){
-  if(hasDescendants()){
-    freeDescendants();
-    initDescendants();
+void createMendelGrid(){
+  for(int i = 0; i <= maxRows; i++){
+    gtk_grid_insert_row(GTK_GRID(grid_mendel), i);
   }
-  grid_mendelRows = total;
-  for(int i = 0; i <= total; i++){
-    GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), i, i);
-    if(!cell){
-      gtk_grid_insert_row(GTK_GRID(grid_mendel), i);
-      gtk_grid_insert_column(GTK_GRID(grid_mendel), i);
-    }
+  for(int i = 0; i <= maxCols; i++){
+    gtk_grid_insert_column(GTK_GRID(grid_mendel), i);
   }
-  for(int row = 0; row <= total; row++){
-    for(int col = 0; col <= total; col++){
+  for(int row = 0; row <= maxRows; row++){
+    for(int col = 0; col <= maxCols; col++){
       GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), col, row);
       if(!cell){
         cell = gtk_frame_new("");
@@ -655,7 +662,8 @@ void createMendelGrid(int total){
       }
     }
   }
-  
+  gtk_grid_set_row_spacing(GTK_GRID(grid_mendel), 10);
+  gtk_grid_set_column_spacing(GTK_GRID(grid_mendel), 10);
 }
 
 void createMendelHeaders(gchar *fatherTxt, gchar *motherTxt, int maxLet, int total){
@@ -732,36 +740,38 @@ void createMendelHeaders(gchar *fatherTxt, gchar *motherTxt, int maxLet, int tot
 }
 
 void colorMendelGrid(){
-  createColors();
-
-  int cont = 0;
   int colorIndex = 0;
   for(int i = 0; i < colorsUsed.used; i++){
     colorsUsed.data[i] = -1;
     colorsCount.data[i] = -1;
   }
-
-  for(int row = 1; row <= grid_mendelRows; row++){
-    for(int col = 1; col <= grid_mendelRows; col++){
-      GtkCssProvider *provider;
-      provider = gtk_css_provider_new();
+  int r = 0;
+  int c = 0;
+  int cont = 0;
+  for(int row = 1; row <= maxRows; row++){
+    for(int col = 1; col <= maxCols; col++){
       GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), col, row);
-      Array_char d = getDescendant(cont);
-      colorIndex = getColorIndex(d, isPhenotypeSelected);
-      if(colorsCount.data[colorIndex] == -1){
-        colorsCount.data[colorIndex] = 1;
-      } else {
-        colorsCount.data[colorIndex]++;
-      }
-      colorsUsed.data[colorIndex] = colorIndex;
-      gtk_css_provider_load_from_data(provider, colors.data[colorIndex].data,-1,NULL);
+      r = row+lastRow-maxRows-1;
+      c = col+lastCol-maxCols-1;
+      Array_char d = getDescendant(r,c);
       GtkStyleContext * context = gtk_widget_get_style_context(cell);
-      gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_USER);
+      if(providersIndex.used > cont){
+        gtk_style_context_remove_provider(context, GTK_STYLE_PROVIDER(providers.data[providersIndex.data[cont]]));
+      }
+      if(d.data == NULL){
+        gtk_frame_set_label(GTK_FRAME(cell), "");
+      } else {
+        colorIndex = getColorIndex(d, isPhenotypeSelected);
+        gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(providers.data[colorIndex]),GTK_STYLE_PROVIDER_PRIORITY_USER);
+        if(providersIndex.used == cont){
+          insertArray(providersIndex, int, colorIndex);
+        } else {
+          providersIndex.data[cont] = colorIndex;
+        }
+      }
       cont++;
-      g_object_unref (provider);
     }
   }
-  quicksort(colorsCount, colorsUsed);
 }
 
 void createColors(){
@@ -801,17 +811,42 @@ void createColors(){
     //printf("%s\n", color.data);
     if(colors.used < i){
       insertArray(colors, Array_char, color);
+      GtkCssProvider *provider;
+      provider = gtk_css_provider_new();
+      gtk_css_provider_load_from_data(provider, colors.data[i-1].data,-1,NULL);
+      insertArray(providers, GtkCssProvider*, provider);
+
     }
   } 
+  countColors();
+}
+
+void countColors(){
+  int colorIndex = 0;
+  for(int r = 0; r < grid_mendelRows; r++){
+    for(int c = 0; c < grid_mendelRows;c++){
+      Array_char d = getDescendant(r,c);
+      colorIndex = getColorIndex(d, isPhenotypeSelected);
+      if(colorsCount.data[colorIndex] == -1){
+        colorsCount.data[colorIndex] = 1;
+      } else {
+        colorsCount.data[colorIndex]++;
+      }
+      colorsUsed.data[colorIndex] = colorIndex;
+    }
+  }
+  quicksort(colorsCount, colorsUsed);
 }
 
 void fillPercentages(){
+  printf("SIIII\n");
   if(!done3){
     done3 = true;
     double p;
     double sum = 0.0;
     int size;
     GtkWidget *percentages_box = GTK_WIDGET(gtk_builder_get_object(builder2, "percentages_box"));
+    printf("ccu:%d\n",colorsCount.used);
     for(int i = 0; i < colorsCount.used; i++){
       if(colorsUsed.data[i] == -1){
         break;
@@ -843,7 +878,7 @@ void fillPercentages(){
       GtkCssProvider *provider;
       provider = gtk_css_provider_new();
       
-      gtk_css_provider_load_from_data(provider, colors.data[colorsUsed.data[i]].data,-1,NULL); 
+      gtk_css_provider_load_from_data(provider, colors.data[colorsUsed.data[i]].data,-1,NULL);
       GtkStyleContext * context = gtk_widget_get_style_context(cell);   
       gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_USER);
       g_object_unref (provider);
@@ -880,6 +915,38 @@ void on_btn_show_percentages_clicked(GtkButton *b){
 
 void on_percentage_window_focus(GtkWidget* self, GtkDirectionType direction, gpointer user_data){
   fillPercentages();
+}
+
+void on_btn_up_clicked(GtkButton *b){
+  if(lastRow - 2*maxRows >= 0){
+    lastRow = lastRow - 2*maxRows;
+    lastCol = lastCol - maxCols;
+    fillMendelGridAux();
+  }
+}
+
+void on_btn_left_clicked(GtkButton *b){
+  if(lastCol - 2*maxCols >= 0){
+    lastRow = lastRow - maxRows;
+    lastCol = lastCol - 2*maxCols;
+    fillMendelGridAux();
+  }
+}
+
+void on_btn_down_clicked(GtkButton *b){
+  if(headersMendelY.used - lastRow > 0){//NOSE
+    lastCol = lastCol - maxCols;
+    //lastRow = lastRow + maxRows;
+    fillMendelGridAux();
+  }
+}
+
+void on_btn_right_clicked(GtkButton *b){
+  if(headersMendelX.used - lastCol > 0){//NOSE
+    lastRow = lastRow - maxRows;
+    //lastCol = lastCol + maxCols;
+    fillMendelGridAux();
+  }
 }
 
 //https://www.youtube.com/watch?v=SvEBHBRept8&list=PLmMgHNtOIstZEvqYJncYUx52n8_OV0uWy&index=25

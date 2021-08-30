@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.2 -->
+<!-- Generated with glade 3.22.1 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
   <object class="GtkWindow" id="loadError">
@@ -284,7 +284,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="halign">start</property>
-                            <property name="label" translatable="yes">Recesive</property>
+                            <property name="label" translatable="yes">Recessive</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -293,10 +293,10 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkEntry" id="txt_recesiveLetter">
+                          <object class="GtkEntry" id="txt_recessiveLetter">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <signal name="changed" handler="on_txt_recesiveLetter_changed" swapped="no"/>
+                            <signal name="changed" handler="on_txt_recessiveLetter_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -321,7 +321,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="halign">start</property>
-                            <property name="label" translatable="yes">Recesive trait</property>
+                            <property name="label" translatable="yes">Recessive trait</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -330,10 +330,10 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkEntry" id="txt_recesiveTrait">
+                          <object class="GtkEntry" id="txt_recessiveTrait">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <signal name="changed" handler="on_txt_recesiveTrait_changed" swapped="no"/>
+                            <signal name="changed" handler="on_txt_recessiveTrait_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -372,28 +372,34 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkFixed" id="gtkFixed">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">3</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkTreeView" id="lst_traits">
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkViewport">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">baseline</property>
+                        <property name="valign">baseline</property>
+                        <child>
+                          <object class="GtkTreeView" id="tv_traits">
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="halign">baseline</property>
+                            <property name="valign">baseline</property>
+                            <child internal-child="selection">
+                              <object class="GtkTreeSelection"/>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
                     </child>
                   </object>
                   <packing>
                     <property name="expand">True</property>
                     <property name="fill">True</property>
-                    <property name="position">4</property>
+                    <property name="position">3</property>
                   </packing>
                 </child>
               </object>
@@ -526,7 +532,7 @@
                     <property name="valign">baseline</property>
                     <property name="orientation">vertical</property>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkBox" id="box_mf">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="halign">baseline</property>
@@ -628,7 +634,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkScrolledWindow">
+                      <object class="GtkScrolledWindow" id="scroll_mendel">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="halign">baseline</property>
@@ -759,43 +765,128 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox">
+                      <object class="GtkLabel">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can_focus">False</property>
-                            <property name="halign">start</property>
-                            <property name="label" translatable="yes">Percentages</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="btn_show_percentages">
-                            <property name="label" translatable="yes">Show</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">True</property>
-                            <property name="halign">start</property>
-                            <signal name="clicked" handler="on_btn_show_percentages_clicked" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
+                        <property name="halign">start</property>
+                        <property name="label" translatable="yes">Percentages</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
                         <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="btn_show_percentages">
+                        <property name="label" translatable="yes">Show</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="halign">start</property>
+                        <signal name="clicked" handler="on_btn_show_percentages_clicked" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="label" translatable="yes">Controls</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">4</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkGrid">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="row_spacing">5</property>
+                        <property name="column_spacing">5</property>
+                        <child>
+                          <object class="GtkButton" id="btn_up">
+                            <property name="label" translatable="yes">Up</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">True</property>
+                            <property name="halign">center</property>
+                            <signal name="clicked" handler="on_btn_up_clicked" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left_attach">1</property>
+                            <property name="top_attach">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="btn_left">
+                            <property name="label" translatable="yes">Left</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">True</property>
+                            <property name="halign">center</property>
+                            <signal name="clicked" handler="on_btn_left_clicked" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left_attach">0</property>
+                            <property name="top_attach">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="btn_down">
+                            <property name="label" translatable="yes">Down</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">True</property>
+                            <property name="halign">center</property>
+                            <signal name="clicked" handler="on_btn_down_clicked" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left_attach">1</property>
+                            <property name="top_attach">2</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="btn_right">
+                            <property name="label" translatable="yes">Right</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">True</property>
+                            <property name="halign">center</property>
+                            <signal name="clicked" handler="on_btn_right_clicked" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left_attach">2</property>
+                            <property name="top_attach">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                        <child>
+                          <placeholder/>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">5</property>
                       </packing>
                     </child>
                   </object>
@@ -835,16 +926,6 @@
           </packing>
         </child>
       </object>
-    </child>
-  </object>
-  <object class="GtkWindow" id="windowTable">
-    <property name="can_focus">False</property>
-    <property name="title" translatable="yes">Treeview</property>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
-    <child>
-      <placeholder/>
     </child>
   </object>
 </interface>

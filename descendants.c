@@ -1,27 +1,34 @@
 #include "descendants.h"
 
-Array_chars descendants;
+Array_chars2 descendants;
 int maxColor = 0;
+int maxCant = 32;
 bool hasDesc = false;
 
 struct Trie* genTHead;
 
-void initDescendants(){
+void initDescendants(int tot){
   genTHead = getNewTrieNode();
-  initArray(descendants, Array_char, 1024);
+  if(tot > maxCant){
+    maxCant = tot;
+  }
+  initArray(descendants, Array_char, maxCant);
 }
 
 void freeDescendants(){
   hasDesc = false;
   maxColor = 0;
   for(int i = 0; i < descendants.used; i++){
-      deletionTrie(&genTHead, descendants.data[i].data);
-      freeArray(descendants.data[i]);
+    for(int j = 0; j < descendants.data[i].used; j++){
+      deletionTrie(&genTHead, descendants.data[i].data[j].data);
+      freeArray(descendants.data[i].data[j]);
+    }
+    freeArray(descendants.data[i]);
   }
   freeArray(descendants);
 }
 
-Array_char createDescendant(Array_char father, Array_char mother){
+Array_char createDescendant(Array_char father, Array_char mother, int row){
   hasDesc = true;
   int r;
   Array_char descendant;
@@ -32,7 +39,16 @@ Array_char createDescendant(Array_char father, Array_char mother){
   }
   r = insertTrie(genTHead, descendant, maxColor);
   insertArray(descendant, char, '\0');
-  insertArray(descendants, Array_char, descendant);
+  Array_chars dRow;
+  if(descendants.used == row){
+    initArray(dRow, Array_char, maxCant);
+    insertArray(dRow, Array_char, descendant);
+    insertArray(descendants, Array_chars, dRow);
+  } else {
+    dRow = descendants.data[row];
+    insertArray(dRow, Array_char, descendant);
+    descendants.data[row] = dRow;
+  }
   if(r > maxColor){
     maxColor = r;
   }
@@ -53,8 +69,15 @@ int getMaxColor(){
   return maxColor;
 }
 
-Array_char getDescendant(int i){
-  return descendants.data[i];
+Array_char getDescendant(int row, int col){
+  Array_char error = {NULL, 0, 0};
+  if(row >= descendants.used){
+    return error;
+  }
+  if(col >= descendants.data[row].used){
+    return error;
+  }
+  return descendants.data[row].data[col];
 }
 
 bool hasDescendants(){
