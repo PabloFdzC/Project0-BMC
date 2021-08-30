@@ -90,7 +90,6 @@ Array_int colorsCount;
 Array_int colorsUsed;
 Array_chars percentages;
 
-int lastDescendantI = -1;
 int lastRow = 0;
 int lastCol = 0;
 
@@ -572,34 +571,39 @@ void fillMendelGridAux(){
   int lRow = lastRow;
   int lCol = lastCol;
   int r=0,c=0;
+  printf("EMPIEZA\n");
   for(int row = 0; row <= maxRows; row++){
     lRow = row + lastRow;
+    if(lastRow == 0){
+      r = row-1;
+    } else {
+      r = row+lastRow-maxRows-1;
+    }
     for(int col = 0; col <= maxCols; col++){
       GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), col, row);
+      lCol = col + lastCol;
+      if(lastCol == 0){
+        c = col-1;
+      }else{
+        c = col+lastCol-maxCols-1;
+      }
       if(row == 0 && col > 0){
-        lCol = col + lastCol;
-        if(lCol < headersMendelX.used){
-          gtk_frame_set_label(GTK_FRAME(cell), headersMendelX.data[lCol].data);
+        printf("r:%d, c:%d, lCol:%d\n", r,c, lCol);
+        if(lCol-1 < headersMendelX.used){
+          gtk_frame_set_label(GTK_FRAME(cell), headersMendelX.data[lCol-1].data);
         } else {
+          printf("SIII\n");
           gtk_frame_set_label(GTK_FRAME(cell), "");
         }
       } else if(col == 0 && row > 0){
-        if(lRow < headersMendelY.used){
-          gtk_frame_set_label(GTK_FRAME(cell), headersMendelY.data[lRow].data);
+        printf("r:%d, c:%d, lRow:%d\n", r,c, lRow);
+        if(lRow-1 < headersMendelY.used){
+          gtk_frame_set_label(GTK_FRAME(cell), headersMendelY.data[lRow-1].data);
         } else {
           gtk_frame_set_label(GTK_FRAME(cell), "");
         }
       } else if(row > 0 && col > 0){
-        if(lastRow == 0){
-          r = row-1;
-        } else {
-          r = row+lastRow-maxRows-1;
-        }
-        if(lastCol == 0){
-          c = col-1;
-        }else{
-          c = col+lastCol-maxCols-1;
-        }
+        printf("r:%d, c:%d\n", r,c);
         Array_char d = getDescendant(r,c);
         if(d.data == NULL){
           gtk_frame_set_label(GTK_FRAME(cell), "");
@@ -640,7 +644,8 @@ void on_btn_mendel_clicked(GtkButton *b){
 
 	fatherTxt = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(cbx_father));
   motherTxt = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(cbx_mother));
-  
+  lastRow = 0;
+  lastCol = 0;
   fillMendelGrid(fatherTxt, motherTxt);
 }
 
@@ -818,11 +823,14 @@ void createColors(){
 
     }
   } 
-  countColors();
 }
 
 void countColors(){
   int colorIndex = 0;
+  for(int i = 0; i < colorsUsed.used; i++){
+    colorsUsed.data[i] = -1;
+    colorsCount.data[i] = -1;
+  }
   for(int r = 0; r < grid_mendelRows; r++){
     for(int c = 0; c < grid_mendelRows;c++){
       Array_char d = getDescendant(r,c);
@@ -839,14 +847,13 @@ void countColors(){
 }
 
 void fillPercentages(){
-  printf("SIIII\n");
   if(!done3){
+    countColors();
     done3 = true;
     double p;
     double sum = 0.0;
     int size;
     GtkWidget *percentages_box = GTK_WIDGET(gtk_builder_get_object(builder2, "percentages_box"));
-    printf("ccu:%d\n",colorsCount.used);
     for(int i = 0; i < colorsCount.used; i++){
       if(colorsUsed.data[i] == -1){
         break;
