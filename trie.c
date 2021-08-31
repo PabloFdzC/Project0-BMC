@@ -24,12 +24,33 @@ int insertTrie(struct Trie *head, Array_char str, int color){
     struct Trie* curr = head;
     for (int i = 0; i < str.used && str.data[i] != '\0'; i++){
         // create a new node if the path doesn't exist
-        if (curr->character[str.data[i] - '0'] == NULL) {
-            curr->character[str.data[i] - '0'] = getNewTrieNode();
-        }
  
         // go to the next node
-        curr = curr->character[str.data[i] - '0'];
+        if(i%2 == 0){
+            if(str.data[i] <= 90 && str.data[i] >= 65){
+                if (curr->character[str.data[i] - '0'] == NULL) {
+                    curr->character[str.data[i] - '0'] = getNewTrieNode();
+                }
+                curr = curr->character[str.data[i] - '0'];
+            } else {
+                if (curr->character[str.data[i+1] - '0'] == NULL) {
+                    curr->character[str.data[i+1] - '0'] = getNewTrieNode();
+                }
+                curr = curr->character[str.data[i+1] - '0'];
+            }
+        } else {
+            if(str.data[i] <= 90 && str.data[i] >= 65 && str.data[i-1] <= 122 && str.data[i-1] >= 97){
+                if (curr->character[str.data[i-1] - '0'] == NULL) {
+                    curr->character[str.data[i-1] - '0'] = getNewTrieNode();
+                }
+                curr = curr->character[str.data[i-1] - '0'];
+            } else {
+                if (curr->character[str.data[i] - '0'] == NULL) {
+                    curr->character[str.data[i] - '0'] = getNewTrieNode();
+                }
+                curr = curr->character[str.data[i] - '0'];
+            }
+        }
     }
  
     // mark the current node as a leaf
@@ -52,7 +73,21 @@ struct Trie* searchTrie(struct Trie* head, Array_char str){
     struct Trie* curr = head;
     for (int i = 0; i < str.used && str.data[i] != '\0'; i++){
         // go to the next node
-        curr = curr->character[str.data[i] - '0'];
+
+        if(i%2 == 0){
+            if(str.data[i] <= 90 && str.data[i] >= 65){
+                curr = curr->character[str.data[i] - '0'];
+            } else {
+                curr = curr->character[str.data[i+1] - '0'];
+            }
+        } else {
+            if(str.data[i] <= 90 && str.data[i] >= 65 && str.data[i-1] <= 122 && str.data[i-1] >= 97){
+                curr = curr->character[str.data[i-1] - '0'];
+            } else {
+                curr = curr->character[str.data[i] - '0'];
+            }
+        }
+
         // if the string is invalid (reached end of a path in the Trie)
         if (curr == NULL) {
             return NULL;

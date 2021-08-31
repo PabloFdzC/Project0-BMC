@@ -98,10 +98,33 @@ int maxCols = 8;
 typedef Array(GtkCssProvider*) Array_provider;
 Array_provider providers;
 Array_int providersIndex;
+GtkWidget *lbl_descendantsPages;
+int desActualPageX = 1;
+int desActualPageY = 1;
+int desTotPageX = 1;
+int desTotPageY = 1;
+
+int maxParentsShow = 32;
+GtkWidget *lbl_parentsPages;
+int lastParent = 0;
+int parActualPage = 1;
+int parTotPage = 1;
+
+int maxColorsShow = 5;
+GtkWidget *lbl_percentagePages;
+int lastColorP = 0;
+Array_provider providersPe;
+Array_int providersIndexPe;
+int perActualPage = 1;
+int perTotPage = 1;
+
+Array_chars tooltips;
+Array_char tooltip;
 
 void create_view_and_model();
 void fillTraitsTreeView();
 void fillGridGenotypes();
+void fillGridGenotypesAux();
 void fillParentsCbx();
 void on_father_toggled(GtkToggleButton* w);
 void on_mother_toggled(GtkToggleButton* w);
@@ -112,6 +135,7 @@ void createColors();
 void createAllDescendants(int total);
 void fillMendelGridAux();
 void countColors();
+void tooltipArray(Array_char parent);
 
 int main(int argc, char *argv[]){
   initArray(roles, enum Role, 10);
@@ -123,6 +147,7 @@ int main(int argc, char *argv[]){
   initArray(providersIndex, int, 32);
   initArray(colorsCount, int, 32);
   initArray(colorsUsed, int, 32);
+  initArray(tooltip, char, 32);
   colorsUsed.used = 32;
   colorsCount.used = 32;
   initDescendants(32);
@@ -138,13 +163,13 @@ int main(int argc, char *argv[]){
   window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
   stack = GTK_STACK(gtk_builder_get_object(builder, "stack"));
   grid_mendel = GTK_WIDGET(gtk_builder_get_object(builder, "grid_mendel"));
+  lbl_descendantsPages = GTK_WIDGET(gtk_builder_get_object(builder, "lbl_descendantsPages"));
   gtk_window_maximize(GTK_WINDOW(window));
   gtk_builder_connect_signals(builder, NULL);
 
   create_view_and_model();
 
   btn_chooseFile = GTK_WIDGET(gtk_builder_get_object(builder,"file1"));
-
   gtk_widget_show(window);
   createMendelGrid();
   gtk_main();
@@ -197,6 +222,7 @@ void on_window_destroy(){
   freeArray(colorsUsed);
   freeArray(providers);
   freeArray(providersIndex);
+  freeArray(tooltip);
   freeDescendants();
   gtk_main_quit();
 }
@@ -416,6 +442,9 @@ void on_stack_set_focus_child(GtkContainer* container, GtkWidget* child){
 
 void fillParentsCbx(){
   if(!doneParentsCbx){
+    lastParent = 0;
+    parActualPage = 1;
+    parTotPage = 1;
     doneParentsCbx = true;
     if(strList.used > 0){
       GtkListStore *liststoreF;
@@ -451,6 +480,9 @@ void fillParentsCbx(){
 
 void fillGridGenotypes(){
   if(!doneGenotypes){
+    lastParent = 0;
+    parActualPage = 1;
+    parTotPage = 1;
     doneGenotypes = true;
     if(strList.used > 0){
       freeArrayP(strList);
@@ -458,40 +490,32 @@ void fillGridGenotypes(){
     strList = generateGenotypes(domLettersC);
 
     deleteAllArray(roles);
-    GtkWidget *grid_genotypes;
+
     int half = strList.used / 2;
-    int nameL;
-    
+    GtkWidget *grid_genotypes;
     grid_genotypes = GTK_WIDGET(gtk_builder_get_object(builder, "grid_genotypes"));
-    int row = 0;
-    for(; row < strList.used; row++){
-      nameL = snprintf( NULL, 0, "%d", row ) + 1;
-      Array_char name;
-      initArray(name, char, nameL);
-      snprintf(name.data, nameL, "%d", row );
-      name.used = nameL;
-      name.data[nameL-1] = '\0';
-      insertArray(rbtnNames, Array_char, name);
+
+    for(int row = 0; row < strList.used; row++){
+      if(row > half){
+        insertArray(roles, enum Role, MOTHER);
+      } else {
+        insertArray(roles, enum Role, FATHER);
+      }
+    }
+
+    for(int row = 0; row < maxParentsShow; row++){
       GtkWidget *rBtn1 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 1, row);
       GtkWidget *rBtn2 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 2, row);
       if(rBtn1){
-        gtk_button_set_label(GTK_BUTTON(rBtn1), strList.data[row].data);
-        gtk_button_set_label(GTK_BUTTON(rBtn2), strList.data[row].data);
         gtk_widget_set_visible(GTK_WIDGET(rBtn1), TRUE);
         gtk_widget_set_visible(GTK_WIDGET(rBtn2), TRUE);
-      }else{
+      } else {
         gtk_grid_insert_row(GTK_GRID(grid_genotypes), row);
-        rBtn1 = gtk_radio_button_new_with_label_from_widget(NULL, strList.data[row].data);
-        rBtn2 = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rBtn1), strList.data[row].data);
-        gtk_widget_set_name(GTK_WIDGET(rBtn1), name.data);
-        gtk_widget_set_name(GTK_WIDGET(rBtn2), name.data);
+        rBtn1 = gtk_radio_button_new_from_widget(NULL);
+        rBtn2 = gtk_radio_button_new_from_widget(GTK_RADIO_BUTTON(rBtn1));
         gtk_grid_attach(GTK_GRID(grid_genotypes), rBtn1, 1, row, 1, 1);
         gtk_grid_attach(GTK_GRID(grid_genotypes), rBtn2, 2, row, 1, 1);
       }
-
-      gtk_widget_set_tooltip_text(rBtn1, strList.data[row].data); // Creates tooltip
-      gtk_widget_set_tooltip_text(rBtn2, strList.data[row].data); // Creates tooltip
-      
 
       g_signal_connect(rBtn1, "toggled", G_CALLBACK(on_father_toggled), NULL);
       g_signal_connect(rBtn2, "toggled", G_CALLBACK(on_mother_toggled), NULL);
@@ -499,28 +523,81 @@ void fillGridGenotypes(){
       gtk_widget_show(rBtn1);
       gtk_widget_show(rBtn2);
 
-      if(row > half){
-        insertArray(roles, enum Role, MOTHER);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rBtn2), TRUE);
-      } else {
-        insertArray(roles, enum Role, FATHER);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rBtn1), TRUE);
-      }
     }
-    while(true){
-      GtkWidget *rBtn1 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 1, row);
-      GtkWidget *rBtn2 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 2, row);
-      if(rBtn1){
+
+    fillGridGenotypesAux();
+  }
+}
+
+void fillGridGenotypesAux(){
+  int nameL;
+  int row = 0;
+
+  GtkWidget *grid_genotypes;
+  grid_genotypes = GTK_WIDGET(gtk_builder_get_object(builder, "grid_genotypes"));
+
+  for(; row < maxParentsShow; row++){
+    nameL = snprintf(NULL, 0, "%d", lastParent) + 1;
+    Array_char name;
+    initArray(name, char, nameL);
+    snprintf(name.data, nameL, "%d", lastParent);
+    name.used = nameL;
+    name.data[nameL-1] = '\0';
+    insertArray(rbtnNames, Array_char, name);
+    GtkWidget *rBtn1 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 1, row);
+    GtkWidget *rBtn2 = gtk_grid_get_child_at(GTK_GRID(grid_genotypes), 2, row);
+    if(rBtn1){
+      if(lastParent < roles.used){
+        gtk_widget_set_visible(GTK_WIDGET(rBtn1), TRUE);
+        gtk_widget_set_visible(GTK_WIDGET(rBtn2), TRUE);
+        gtk_button_set_label(GTK_BUTTON(rBtn1), strList.data[lastParent].data);
+        gtk_button_set_label(GTK_BUTTON(rBtn2), strList.data[lastParent].data);
+        tooltipArray(strList.data[lastParent]);
+        gtk_widget_set_tooltip_text(rBtn1, tooltip.data); // Creates tooltip
+        gtk_widget_set_tooltip_text(rBtn2, tooltip.data); // Creates tooltip
+        if(roles.data[lastParent] == MOTHER){
+          gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rBtn2), TRUE);
+        } else {
+          gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(rBtn1), TRUE);
+        }
+      } else {
         gtk_widget_set_visible(GTK_WIDGET(rBtn1), FALSE);
         gtk_widget_set_visible(GTK_WIDGET(rBtn2), FALSE);
-        row++;
+      }
+    }  
+    lastParent++;
+  }
+  if(strList.used % maxParentsShow == 0){
+    parTotPage = strList.used / maxParentsShow;
+  } else{
+    parTotPage = strList.used / maxParentsShow + 1;
+  }
+  char lbl[14];
+  lbl_parentsPages = GTK_WIDGET(gtk_builder_get_object(builder, "lbl_parentsPages"));
+  sprintf(lbl, "%d of %d", parActualPage, parTotPage);
+  gtk_label_set_text(GTK_LABEL(lbl_parentsPages), lbl);
+
+}
+
+void tooltipArray(Array_char parent){
+  deleteAllArray(tooltip);
+  bool dominant;
+  int current;
+  for(int i = 0; i < parent.used-1; i+=2){
+    dominant = (parent.data[i] >= 'A' && parent.data[i] <= 'Z') || (parent.data[i+1] >= 'A' && parent.data[i+1] <= 'Z');
+    current = i/2;
+    for(int j = 0; j < domTraitsC.data[current].used-1; j++){
+      if(dominant){
+        insertArray(tooltip, char, domTraitsC.data[current].data[j]);
       } else {
-        break;
+        insertArray(tooltip, char, recTraitsC.data[current].data[j]);
       }
     }
-    
-    
+    if(i != parent.used-3){
+      insertArray(tooltip, char, ',');
+    }
   }
+  insertArray(tooltip, char, '\0');
 }
 
 void on_rbtn_identicalGen_toggled(GtkToggleButton* iG){
@@ -558,7 +635,6 @@ void on_mother_toggled(GtkToggleButton* w){
 }
 
 void fillMendelGrid(gchar *fatherTxt, gchar *motherTxt){
-
   int maxLet = strlen(fatherTxt)/2;
   int total = (int)pow(2.0, (double)maxLet);
   createMendelHeaders(fatherTxt, motherTxt, maxLet, total);
@@ -571,39 +647,26 @@ void fillMendelGridAux(){
   int lRow = lastRow;
   int lCol = lastCol;
   int r=0,c=0;
-  printf("EMPIEZA\n");
   for(int row = 0; row <= maxRows; row++){
     lRow = row + lastRow;
-    if(lastRow == 0){
-      r = row-1;
-    } else {
-      r = row+lastRow-maxRows-1;
-    }
+    r = row+lastRow-1;
     for(int col = 0; col <= maxCols; col++){
       GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(grid_mendel), col, row);
       lCol = col + lastCol;
-      if(lastCol == 0){
-        c = col-1;
-      }else{
-        c = col+lastCol-maxCols-1;
-      }
+      c = col+lastCol-1;
       if(row == 0 && col > 0){
-        printf("r:%d, c:%d, lCol:%d\n", r,c, lCol);
         if(lCol-1 < headersMendelX.used){
           gtk_frame_set_label(GTK_FRAME(cell), headersMendelX.data[lCol-1].data);
         } else {
-          printf("SIII\n");
           gtk_frame_set_label(GTK_FRAME(cell), "");
         }
       } else if(col == 0 && row > 0){
-        printf("r:%d, c:%d, lRow:%d\n", r,c, lRow);
         if(lRow-1 < headersMendelY.used){
           gtk_frame_set_label(GTK_FRAME(cell), headersMendelY.data[lRow-1].data);
         } else {
           gtk_frame_set_label(GTK_FRAME(cell), "");
         }
       } else if(row > 0 && col > 0){
-        printf("r:%d, c:%d\n", r,c);
         Array_char d = getDescendant(r,c);
         if(d.data == NULL){
           gtk_frame_set_label(GTK_FRAME(cell), "");
@@ -618,6 +681,19 @@ void fillMendelGridAux(){
   lastRow = lRow;
   lastCol = lCol;
   colorMendelGrid();
+  char lbl[23];
+  if(grid_mendelRows % maxRows == 0){
+    desTotPageY = grid_mendelRows / maxRows;
+  } else{
+    desTotPageX = grid_mendelRows / maxRows + 1;
+  }
+  if(grid_mendelRows % maxCols == 0){
+    desTotPageY = grid_mendelRows / maxCols;
+  } else{
+    desTotPageY = grid_mendelRows / maxCols + 1;
+  }
+  sprintf(lbl, "(%d,%d) of (%d,%d)", desActualPageX, desActualPageY, desTotPageX, desTotPageY);
+  gtk_label_set_text(GTK_LABEL(lbl_descendantsPages), lbl);
 }
 
 void createAllDescendants(int total){
@@ -646,6 +722,10 @@ void on_btn_mendel_clicked(GtkButton *b){
   motherTxt = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(cbx_mother));
   lastRow = 0;
   lastCol = 0;
+  desActualPageX = 1;
+  desActualPageY = 1;
+  desTotPageX = 1;
+  desTotPageY = 1;
   fillMendelGrid(fatherTxt, motherTxt);
 }
 
@@ -766,7 +846,7 @@ void colorMendelGrid(){
       if(d.data == NULL){
         gtk_frame_set_label(GTK_FRAME(cell), "");
       } else {
-        colorIndex = getColorIndex(d, isPhenotypeSelected);
+        colorIndex = getColorIndex(d, isPhenotypeSelected, NULL);
         gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(providers.data[colorIndex]),GTK_STYLE_PROVIDER_PRIORITY_USER);
         if(providersIndex.used == cont){
           insertArray(providersIndex, int, colorIndex);
@@ -788,57 +868,61 @@ void createColors(){
   int r, sum;
   char redC[4], greenC[4], blueC[4];
   for(int i = 0; i <= totColors; i++){
-    Array_char color;
-    r = (rand() % (255 - 60 + 1)) + 60;
-    if(i % 3 == 0){
-      red = r;
-    } if(i % 2 == 0){
-      green = r;
-    } else {
-      blue = r;
-    }
-    if(i < colors.used){
-      color = colors.data[i];
-    } else {
-      initArray(color, char, 64);
-    }
-    snprintf(redC, 4, "%d", red);
-    snprintf(greenC, 4, "%d", green);
-    snprintf(blueC, 4, "%d", blue);
-    sum = (red * 299 + green * 587 + blue * 114) / 1000;
-    if(sum > 128){
-      sprintf(color.data, "*{background-color: rgb(%s,%s,%s);color:#000;padding:2px;}", redC, greenC, blueC);
-    } else{
-      sprintf(color.data, "*{background-color: rgb(%s,%s,%s);color:#FFF;padding:2px;}", redC, greenC, blueC);
-    }
-    color.data[63] = '\0';
-    color.used = 64;
-    //printf("%s\n", color.data);
     if(colors.used < i){
+      Array_char color;
+      r = (rand() % (255 - 60 + 1)) + 60;
+      if(i % 3 == 0){
+        red = r;
+      } if(i % 2 == 0){
+        green = r;
+      } else {
+        blue = r;
+      }
+      if(i < colors.used){
+        color = colors.data[i];
+      } else {
+        initArray(color, char, 64);
+      }
+      snprintf(redC, 4, "%d", red);
+      snprintf(greenC, 4, "%d", green);
+      snprintf(blueC, 4, "%d", blue);
+      sum = (red * 299 + green * 587 + blue * 114) / 1000;
+      if(sum > 128){
+        sprintf(color.data, "*{background-color: rgb(%s,%s,%s);color:#000;padding:2px;}", redC, greenC, blueC);
+      } else{
+        sprintf(color.data, "*{background-color: rgb(%s,%s,%s);color:#FFF;padding:2px;}", redC, greenC, blueC);
+      }
+      color.data[63] = '\0';
+      color.used = 64;
+    //printf("%s\n", color.data);
+
       insertArray(colors, Array_char, color);
       GtkCssProvider *provider;
       provider = gtk_css_provider_new();
       gtk_css_provider_load_from_data(provider, colors.data[i-1].data,-1,NULL);
       insertArray(providers, GtkCssProvider*, provider);
-
     }
   } 
 }
 
 void countColors(){
   int colorIndex = 0;
-  for(int i = 0; i < colorsUsed.used; i++){
-    colorsUsed.data[i] = -1;
-    colorsCount.data[i] = -1;
+  int totalDes = -1;
+  deleteAllArray(colorsUsed);
+  deleteAllArray(colorsCount);
+
+  for(int i = 0; i < getMaxColor(); i++){
+    insertArray(colorsUsed, int, -1);
+    insertArray(colorsCount, int, -1);
   }
   for(int r = 0; r < grid_mendelRows; r++){
     for(int c = 0; c < grid_mendelRows;c++){
       Array_char d = getDescendant(r,c);
-      colorIndex = getColorIndex(d, isPhenotypeSelected);
+      colorIndex = getColorIndex(d, isPhenotypeSelected, &totalDes);
       if(colorsCount.data[colorIndex] == -1){
-        colorsCount.data[colorIndex] = 1;
+        colorsCount.data[colorIndex] = totalDes;
       } else {
-        colorsCount.data[colorIndex]++;
+        colorsCount.data[colorIndex]+=totalDes;
       }
       colorsUsed.data[colorIndex] = colorIndex;
     }
@@ -850,59 +934,105 @@ void fillPercentages(){
   if(!done3){
     countColors();
     done3 = true;
+    bool onlyRemove = false;
     double p;
     double sum = 0.0;
-    int size;
     GtkWidget *percentages_box = GTK_WIDGET(gtk_builder_get_object(builder2, "percentages_box"));
     for(int i = 0; i < colorsCount.used; i++){
       if(colorsUsed.data[i] == -1){
+        colorsUsed.used = i;
+        colorsCount.used = i;
         break;
       }
       sum += colorsCount.data[i];
     }
     initArray(percentages, Array_char, colorsCount.used);
-    for(int i = 0; i < colorsUsed.used; i++){
-      Array_char percStr;
-      if(colorsUsed.data[i] == -1){
-        break;
+    for(int i = 0; i < maxColorsShow; i++){
+      char percStr[10] = "";
+      if(lastColorP < colorsUsed.used){
+        if(colorsUsed.data[lastColorP] != -1){
+          p = ((double)colorsCount.data[lastColorP]) / sum * 100;
+          sprintf(percStr, "%.2f %%", p);
+        }
+      } else {
+        onlyRemove = true;
       }
-      p = ((double)colorsCount.data[i]) / sum * 100;
-      size = snprintf(NULL, 0, "%.2f", p) + 2;
-      initArray(percStr, Array_char, size);
-      snprintf(percStr.data, size, "%.2f", p);
-      percStr.used = size;
-      percStr.data[size-2] = '%';
-      percStr.data[size-1] = '\0';
-      GtkWidget* cell = gtk_frame_new("");
-      gtk_frame_set_label_align (GTK_FRAME(cell), 0.5, 0.5);
-      gtk_frame_set_label(GTK_FRAME(cell), percStr.data);
+      GtkWidget* cell = gtk_grid_get_child_at(GTK_GRID(percentages_box), i, 1);
+      if(!cell){
+        gtk_grid_insert_column(GTK_GRID(percentages_box), i);
+        cell = gtk_frame_new("");
+        gtk_frame_set_label_align(GTK_FRAME(cell), 0.5, 0.5);
+        gtk_grid_attach(GTK_GRID(percentages_box), cell, i, 1, 1, 1);
+      }
+      gtk_frame_set_label(GTK_FRAME(cell), percStr);
       gtk_frame_set_shadow_type(GTK_FRAME(cell), GTK_SHADOW_NONE);
       gtk_widget_set_vexpand(cell, TRUE);
-
-      gtk_box_pack_end(GTK_BOX(percentages_box), cell, TRUE, TRUE, 2);
+      gtk_widget_set_margin_top(cell, ((int)(100.0-p)));
       gtk_widget_show(cell);
       
       GtkCssProvider *provider;
-      provider = gtk_css_provider_new();
-      
-      gtk_css_provider_load_from_data(provider, colors.data[colorsUsed.data[i]].data,-1,NULL);
       GtkStyleContext * context = gtk_widget_get_style_context(cell);   
-      gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_USER);
-      g_object_unref (provider);
+      if(providersPe.used == i){
+        if(lastColorP < colorsUsed.used){
+          provider = gtk_css_provider_new();
+          gtk_css_provider_load_from_data(provider, colors.data[colorsUsed.data[lastColorP]].data,-1,NULL);
+          insertArray(providersPe, GtkCssProvider*, provider);
+          gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_USER);
+        }
+      } else {
+        if(onlyRemove){
+          if(i < providersPe.used){
+            if(providersPe.data[i]){
+              gtk_style_context_remove_provider(context, GTK_STYLE_PROVIDER(providersPe.data[i]));
+              g_object_unref(providersPe.data[i]);
+            }
+            providersPe.data[i] = NULL;
+          }
+        } else {
+          if(i < providersPe.used){
+            if(providersPe.data[i]){
+              gtk_style_context_remove_provider(context, GTK_STYLE_PROVIDER(providersPe.data[i]));
+              g_object_unref(providersPe.data[i]);
+            }
+            if(lastColorP < colorsUsed.used){
+              provider = gtk_css_provider_new();
+              gtk_css_provider_load_from_data(provider, colors.data[colorsUsed.data[lastColorP]].data,-1,NULL);
+              providersPe.data[i] = provider;
+              gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(provider),GTK_STYLE_PROVIDER_PRIORITY_USER);
+            }
+          }
+        }
+        onlyRemove = false;
+      }
+      lastColorP++;
     }
+    if(colorsUsed.used % maxColorsShow == 0){
+      perTotPage = colorsUsed.used / maxColorsShow;
+    } else{
+      perTotPage = colorsUsed.used / maxColorsShow + 1;
+    }
+    char lbl[14];
+    lbl_percentagePages = GTK_WIDGET(gtk_builder_get_object(builder2, "lbl_percentagePages"));
+    sprintf(lbl, "%d of %d", perActualPage, perTotPage);
+    gtk_label_set_text(GTK_LABEL(lbl_percentagePages), lbl);
   }
 }
 
 void percentagesWindow(){
+  initArray(providersPe, GtkCssProvider*, colorsCount.used);
+  initArray(providersIndexPe, int, colorsCount.used);
+  lastColorP = 0;
+
   builder2 = gtk_builder_new();
   gtk_builder_add_from_file(builder2, "glade/percentage.glade", NULL);
 
   GtkWidget *percentage_window = GTK_WIDGET(gtk_builder_get_object(builder2, "percentage_window"));
-  gtk_window_resize (GTK_WINDOW(percentage_window),200, 200);
+  gtk_window_resize (GTK_WINDOW(percentage_window),350, 200);
   gtk_window_set_transient_for(GTK_WINDOW(percentage_window), GTK_WINDOW(window));
   gtk_window_set_modal(GTK_WINDOW(percentage_window), TRUE);
   gtk_builder_connect_signals(builder2, NULL);
 
+  lbl_percentagePages = GTK_WIDGET(gtk_builder_get_object(builder, "lbl_percentagePages"));
   gtk_widget_show(percentage_window);
   gtk_main();
 }
@@ -911,6 +1041,8 @@ void on_percentage_window_close(){
   if(done3){
     done3 = false;
     freeArrayP(percentages);
+    freeArray(providersPe);
+    freeArray(providersIndexPe);
     g_object_unref(builder2);
     gtk_main_quit();
   }
@@ -928,6 +1060,7 @@ void on_btn_up_clicked(GtkButton *b){
   if(lastRow - 2*maxRows >= 0){
     lastRow = lastRow - 2*maxRows;
     lastCol = lastCol - maxCols;
+    desActualPageX--;
     fillMendelGridAux();
   }
 }
@@ -936,26 +1069,58 @@ void on_btn_left_clicked(GtkButton *b){
   if(lastCol - 2*maxCols >= 0){
     lastRow = lastRow - maxRows;
     lastCol = lastCol - 2*maxCols;
+    desActualPageY--;
     fillMendelGridAux();
   }
 }
 
 void on_btn_down_clicked(GtkButton *b){
-  if(headersMendelY.used - lastRow > 0){//NOSE
+  if(headersMendelY.used - lastRow > 0){
     lastCol = lastCol - maxCols;
-    //lastRow = lastRow + maxRows;
+    desActualPageX++;
     fillMendelGridAux();
   }
 }
 
 void on_btn_right_clicked(GtkButton *b){
-  if(headersMendelX.used - lastCol > 0){//NOSE
+  if(headersMendelX.used - lastCol > 0){
     lastRow = lastRow - maxRows;
-    //lastCol = lastCol + maxCols;
+    desActualPageY++;
     fillMendelGridAux();
   }
 }
 
+void on_btn_nextPe_clicked(GtkButton *b){
+  if(lastColorP < colorsCount.used){
+    done3 = false;
+    perActualPage++;
+    fillPercentages();
+  }
+}
+
+void on_btn_previousPe_clicked(GtkButton *b){
+  if(lastColorP - 2*maxColorsShow >= 0){
+    done3 = false;
+    lastColorP = lastColorP - 2*maxColorsShow;
+    perActualPage--;
+    fillPercentages();
+  }
+}
+
+void on_btn_previousPa_clicked(GtkButton *b){
+  if(lastParent - 2*maxParentsShow >= 0){
+    lastParent = lastParent - 2*maxParentsShow;
+    parActualPage--;
+    fillGridGenotypesAux();
+  }
+}
+
+void on_btn_nextPa_clicked(GtkButton *b){
+  if(lastParent < roles.used){
+    parActualPage++;
+    fillGridGenotypesAux();
+  }
+}
 //https://www.youtube.com/watch?v=SvEBHBRept8&list=PLmMgHNtOIstZEvqYJncYUx52n8_OV0uWy&index=25
 
 

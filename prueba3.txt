@@ -1,4 +1,2 @@
 A,Alto,Bajo
 G,Gordo,Flaco
-L,Largo,Corto
-C,Cabeza grande, Cabeza chica

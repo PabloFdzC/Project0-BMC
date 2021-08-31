@@ -8,7 +8,7 @@ void freeDescendants();
 
 Array_char createDescendant(Array_char father, Array_char mother, int row);
 
-int getColorIndex(Array_char descendant, bool phenotype);
+int getColorIndex(Array_char descendant, bool phenotype, int* totDes);
 
 int getMaxColor();
 

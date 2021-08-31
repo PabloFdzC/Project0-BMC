@@ -55,12 +55,16 @@ Array_char createDescendant(Array_char father, Array_char mother, int row){
   return descendant;
 }
 
-int getColorIndex(Array_char descendant, bool phenotype){
+int getColorIndex(Array_char descendant, bool phenotype, int* totDes){
   struct Trie* curr;
   if(phenotype){
     curr = searchTriePhenotype(genTHead, descendant);
   } else {
     curr = searchTrie(genTHead, descendant);
+  }
+  //printf("c-c: %d, c-co: %d\n",curr->count,curr->color);
+  if(totDes){
+    (*totDes) = curr->count;
   }
   return curr->color;
 }
