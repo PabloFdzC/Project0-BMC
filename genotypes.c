@@ -7,9 +7,9 @@ Array_chars generateGenotypes(Array_char letters){
   int totLet = letters.used * 2 + 1;
   int even, first0 = 0;
   Array_chars strList;
-  initArray(strList, Array_char, totComb);
+  initArrayP(strList, Array_char, totComb);
   Array_int count;
-  initArray(count, Array_int, letters.used * 2);
+  initArray(count, int, letters.used * 2);
   for(int i = 0; i < count.size; i++){
     insertArray(count, int, 0);
   }

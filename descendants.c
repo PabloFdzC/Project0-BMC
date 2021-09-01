@@ -12,7 +12,7 @@ void initDescendants(int tot){
   if(tot > maxCant){
     maxCant = tot;
   }
-  initArray(descendants, Array_char, maxCant);
+  initArray(descendants, Array_chars, maxCant);
 }
 
 void freeDescendants(){
@@ -62,7 +62,6 @@ int getColorIndex(Array_char descendant, bool phenotype, int* totDes){
   } else {
     curr = searchTrie(genTHead, descendant);
   }
-  //printf("c-c: %d, c-co: %d\n",curr->count,curr->color);
   if(totDes){
     (*totDes) = curr->count;
   }

@@ -18,7 +18,6 @@ void qs(Array_int list, Array_int list2, int leftL, int rightL){
     while(pivot > list.data[right] && right > leftL)right--;
 
     if(left <= right){ // tal vez este
-    printf("left: %d, right:%d\n",left, right);
       temp = list.data[left];
       temp2 = list2.data[left];
       list.data[left] = list.data[right];
@@ -39,6 +38,5 @@ void qs(Array_int list, Array_int list2, int leftL, int rightL){
 }
 
 void quicksort(Array_int list, Array_int list2){
-  printf("lu:%d\n",list.used);
   qs(list, list2, 0, list.used-1);
 }

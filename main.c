@@ -8,9 +8,9 @@
 
 GtkBuilder *builder;
 GtkBuilder *builder2;
+GtkBuilder *builder3;
 GtkWidget *window;
 GtkWidget *window1;
-GtkWidget *loadError;
 GtkWidget *GtkBoxMain;
 GtkWidget *boxMain;
 GtkWidget *view;
@@ -36,10 +36,7 @@ GtkWidget *lst_traits;
 GtkWidget *grid_mendel;
 int grid_mendelRows = 0;
 
-int check = 0;
-int checkError = 0;
-int genesIntro;
-int genesFinal;
+bool check = false;
 
 enum
 {
@@ -67,11 +64,10 @@ Array_chars strList = {NULL, 0, 0};
 Array_chars rbtnNames;
 
 Array_chars headersMendel;
-Array_chars gene;
-//Array_char  temp;
-Array_char domLettersC = {NULL, 0, 0};
-Array_chars domTraitsC = {NULL, 0, 0};
-Array_chars recTraitsC = {NULL, 0, 0};
+
+Array_char domLettersC;
+Array_chars domTraitsC;
+Array_chars recTraitsC;
 
 Array_chars headersMendelX;
 Array_chars headersMendelY;
@@ -121,6 +117,20 @@ int perTotPage = 1;
 Array_chars tooltips;
 Array_char tooltip;
 
+bool blockOther = false;
+
+bool tvsReady = false;
+GtkTreeIter iterTVS;
+
+GtkWidget *txt_fileName;
+
+int indexTV = -1;
+bool traitSaved = false;
+
+bool mendelFilled = false;
+
+GtkTreeSelection* tvs_selection;
+
 void create_view_and_model();
 void fillTraitsTreeView();
 void fillGridGenotypes();
@@ -136,13 +146,19 @@ void createAllDescendants(int total);
 void fillMendelGridAux();
 void countColors();
 void tooltipArray(Array_char parent);
+void setEntriesRestrictions();
+void insertLetterInTreeView(char c, char domT[], char recT[]);
+void messagesWindow(char m[]);
 
 int main(int argc, char *argv[]){
   initArray(roles, enum Role, 10);
-  initArray(rbtnNames, Array_char, 10);
-  initArray(headersMendelX, Array_char, 32);
-  initArray(headersMendelY, Array_char, 32);
-  initArray(colors, Array_char, 32);
+  initArray(domLettersC, char, 26);
+  initArrayP(domTraitsC, Array_char, 26);
+  initArrayP(recTraitsC, Array_char, 26);
+  initArrayP(rbtnNames, Array_char, 10);
+  initArrayP(headersMendelX, Array_char, 32);
+  initArrayP(headersMendelY, Array_char, 32);
+  initArrayP(colors, Array_char, 32);
   initArray(providers, GtkCssProvider*, 32);
   initArray(providersIndex, int, 32);
   initArray(colorsCount, int, 32);
@@ -157,23 +173,35 @@ int main(int argc, char *argv[]){
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "glade/window.glade", NULL);
 
-
-  loadError = GTK_WIDGET(gtk_builder_get_object(builder, "loadError"));
-
   window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
   stack = GTK_STACK(gtk_builder_get_object(builder, "stack"));
   grid_mendel = GTK_WIDGET(gtk_builder_get_object(builder, "grid_mendel"));
   lbl_descendantsPages = GTK_WIDGET(gtk_builder_get_object(builder, "lbl_descendantsPages"));
+  txt_fileName = GTK_WIDGET(gtk_builder_get_object(builder, "txt_fileName"));
   gtk_window_maximize(GTK_WINDOW(window));
   gtk_builder_connect_signals(builder, NULL);
 
   create_view_and_model();
 
   btn_chooseFile = GTK_WIDGET(gtk_builder_get_object(builder,"file1"));
+
+  setEntriesRestrictions();
+
   gtk_widget_show(window);
   createMendelGrid();
   gtk_main();
   return 0;
+}
+
+void setEntriesRestrictions(){
+  txt_dominantLetter = GTK_WIDGET(gtk_builder_get_object(builder, "txt_dominantLetter"));
+  txt_recessiveLetter = GTK_WIDGET(gtk_builder_get_object(builder, "txt_recessiveLetter"));
+  txt_dominantTrait = GTK_WIDGET(gtk_builder_get_object(builder, "txt_dominantTrait"));
+  txt_recessiveTrait = GTK_WIDGET(gtk_builder_get_object(builder, "txt_recessiveTrait"));
+  txt_nFeatures = GTK_WIDGET(gtk_builder_get_object(builder, "txt_nFeatures"));
+  gtk_entry_set_max_length (GTK_ENTRY(txt_dominantLetter), 1);
+  gtk_entry_set_max_length (GTK_ENTRY(txt_recessiveLetter), 1);
+  gtk_entry_set_max_length (GTK_ENTRY(txt_nFeatures), 1);
 }
 
 void create_view_and_model(){
@@ -198,18 +226,20 @@ void create_view_and_model(){
     "Recesive trait",renderer,"text", COL_RECESIVET,NULL);
 
   gtk_tree_view_set_model (GTK_TREE_VIEW (view), GTK_TREE_MODEL(store));
+  tvs_selection = GTK_TREE_SELECTION(gtk_builder_get_object(builder, "tvs_selection"));
   gtk_widget_show_all(view);
+  tvsReady = true;
 }
 
 void on_window_destroy(){
   g_object_unref(builder);
-  if(domLettersC.size != 0){
+  if(domLettersC.data){
     freeArray(domLettersC);
   }
-  if(domTraitsC.size != 0){
+  if(domTraitsC.data){
     freeArrayP(domTraitsC);
   }
-  if(recTraitsC.size != 0){
+  if(recTraitsC.data){
     freeArrayP(recTraitsC);
   }
   freeArray(roles);
@@ -217,7 +247,7 @@ void on_window_destroy(){
   freeArrayP(rbtnNames);
   freeArrayP(headersMendelX);
   freeArrayP(headersMendelY);
-  freeArray(colors);
+  freeArrayP(colors);
   freeArray(colorsCount);
   freeArray(colorsUsed);
   freeArray(providers);
@@ -229,20 +259,20 @@ void on_window_destroy(){
 
 void on_btn_chooseFile_file_set(GtkFileChooserButton *f){
   strcpy(file,gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(f)));
-  check = 1;
+  check = true;
 }
 
-
 void on_btn_loadFile_clicked(){
-  Array_char domLetters;
-  Array_chars domTraits;
-  Array_chars recTraits;
-  if(check == 1){
+  if(check){
+    check = false;
+    Array_char domLetters;
+    Array_chars domTraits;
+    Array_chars recTraits;
     doneGenotypes = false;
     doneParentsCbx = false;
-    initArray(domLetters, char, 10);
-    initArray(domTraits, Array_char, 10);
-    initArray(recTraits, Array_char, 10);
+    initArray(domLetters, char, 25);
+    initArrayP(domTraits, Array_char, 25);
+    initArrayP(recTraits, Array_char, 25);
     bool dLFilled = false;
     bool dTFilled = false;
     bool badFormat = false;
@@ -262,6 +292,12 @@ void on_btn_loadFile_clicked(){
       if(isalpha(c)){
         if(!dLFilled){
           if(c >= 65 && c <= 90){
+            for(int i = 0; i < domLetters.used; i++){
+              if(domLetters.data[i] == c){
+                badFormat = true;
+                break;
+              }
+            }
             insertArray(domLetters, char, c);
             dLFilled = true;
           } else {
@@ -323,7 +359,22 @@ void on_btn_loadFile_clicked(){
       freeArrayP(domTraits);
       freeArrayP(recTraits);
       freeArray(domLetters);
+      messagesWindow("File format is wrong");
+    } else if(domLetters.used > 7){
+      freeArrayP(domTraits);
+      freeArrayP(recTraits);
+      freeArray(domLetters);
+      messagesWindow("More than 7 traits are not supported");
     } else {
+      if(domLettersC.size > 0){
+        freeArray(domLettersC);
+      }
+      if(domTraitsC.size > 0){
+        freeArrayP(domTraitsC);
+      }
+      if(recTraitsC.size > 0){
+        freeArrayP(recTraitsC);
+      }
       domLettersC = domLetters;
       domTraitsC = domTraits;
       recTraitsC = recTraits;
@@ -335,100 +386,281 @@ void on_btn_loadFile_clicked(){
 void fillTraitsTreeView(){
   gtk_list_store_clear(store);
   for(int i = 0; i < domLettersC.used; i++){
-    char d[8];
-    d[0] = domLettersC.data[i];
-    d[1] = '\0';
-    char r[8];
-    r[0] = domLettersC.data[i]+32;
-    r[1] = '\0';
-    gtk_list_store_append(store, &iter);
-    gtk_list_store_set(store, &iter,COL_DOMINANT, d,COL_DOMINANTT, domTraitsC.data[i].data,COL_RECESIVE,r,COL_RECESIVET,recTraitsC.data[i].data,-1);
+    insertLetterInTreeView(domLettersC.data[i], domTraitsC.data[i].data, recTraitsC.data[i].data);
   }
 }
 
-void on_txt_file_changed(GtkEntry *e){
-  *fileSave = '\0';
-  strcat(fileSave,gtk_entry_get_text(e));
-}
-
-
 void on_btn_saveFile_clicked(){
-
+  const gchar* fn = gtk_entry_get_text(GTK_ENTRY(txt_fileName));
+  bool isAlphaN = isalnum(fn[0]);
+  bool isGood = domLettersC.used > 0 && domLettersC.used == domTraitsC.used && domTraitsC.used == recTraitsC.used;
+  if(isAlphaN){
+    gchar* fileName = g_strconcat(fn, ".txt", NULL);
+    if(isGood){
+      FILE* f;
+      f = fopen(fileName, "w");
+      for(int i = 0; i < domLettersC.used; i++){
+        fputc(domLettersC.data[i], f);
+        fputc(',', f);
+        fputs(domTraitsC.data[i].data, f);
+        fputc(',', f);
+        fputs(recTraitsC.data[i].data, f);
+        if(i != domLettersC.used-1){
+          fputc('\n', f);
+        }
+      }
+      fclose(f);
+    }
+    g_free(fileName);
+  }
+  if(!isAlphaN && !isGood){
+    messagesWindow("Bad name for file and all traits need to be filled");
+  } else if(!isAlphaN){
+    messagesWindow("Bad name for file");
+  } else if(!isGood){
+    messagesWindow("All traits need to be filled");
+  } else {
+    messagesWindow("File saved");
+  }
 }
 
-void on_btn_saveFile(char Pgen[25],char PdominantT[25],char PrecessiveT[25]){
-
-    FILE* fichero;
-    fichero = fopen(fileSave, "a+");
-    fputs(Pgen, fichero);
-    fputs(",",fichero);
-    fputs(PdominantT, fichero);
-    fputs(",",fichero);
-    fputs(PrecessiveT, fichero);
-    fputs(",\n",fichero);
-    fclose(fichero);
-    printf("Proceso completado");
-
+void on_txt_fileName_insert_text(GtkEditable* self, gchar* new_text, gint new_text_length, int position, gpointer user_data){
+  if(!isalnum(new_text[new_text_length-1]) && new_text[new_text_length-1] != 32 && new_text[new_text_length-1] != '-' && new_text[new_text_length-1] != '_'){
+    g_signal_stop_emission_by_name (G_OBJECT(self), "insert_text");
+  }
 }
-
 
 void on_btn_nFeatures_clicked(GtkButton *b){
-  genesIntro = tmp[0] - '0';
-  checkError = 1;
-}
-
-void on_txt_nFeatures_changed(GtkEntry *e){
-  *tmp = '\0';
-  strcat(tmp,gtk_entry_get_text(e));
-}
-
-void on_txt_dominantLetter_changed(GtkEntry *e){
-   *dominantL = '\0';
-   strcat(dominantL,gtk_entry_get_text(e));
-
-}
-
-void on_txt_dominantTrait_changed(GtkEntry *e){
-   *dominantT = '\0';
-   strcat(dominantT,gtk_entry_get_text(e));
-}
-
-void on_txt_recessiveLetter_changed(GtkEntry *e){
-   *recessiveL = '\0';
-   strcat(recessiveL,gtk_entry_get_text(e));
-
-}
-
-void on_txt_recessiveTrait_changed(GtkEntry *e){
-   *recessiveT = '\0';
-   strcat(recessiveT,gtk_entry_get_text(e));
-}
-
-void on_btn_saveTrait_clicked(){
-
-    if(checkError == 1){
-        gtk_list_store_append (store, &iter);
-
-      
-        gtk_list_store_set (store, &iter,
-                    COL_DOMINANT, dominantL,
-                    COL_DOMINANTT, dominantT,
-                    COL_RECESIVE,recessiveT,
-                    -1);
-        insertArray(domLettersC, char, dominantL[0]);
-        genesFinal += 1;
-        on_btn_saveFile(dominantL,dominantT,recessiveT);
-
-        if (genesFinal == genesIntro){
-            fillGridGenotypes();
+  doneParentsCbx = false;
+  doneGenotypes = false;
+  const gchar* val = gtk_entry_get_text(GTK_ENTRY(txt_nFeatures));
+  int n = 0;
+  bool isIn;
+  if(gtk_entry_get_text_length(GTK_ENTRY(txt_nFeatures)) > 0){
+    sscanf(val, "%d", &n);
+  }
+  if(n > 0){
+    if(domLettersC.used == 0){
+      for(char c = 'A'; c <= 'Z'; c++){
+        if(n > 0){
+          insertArray(domLettersC, char, c);
+          insertLetterInTreeView(c, "", "");
+        } else {
+          break;
         }
+        n--;
+      }
+    } else if(n > domLettersC.used){
+      n = n - domLettersC.used;
+      for(char c = 'A'; c <= 'Z'; c++){
+        if(n > 0){
+          isIn = false;
+          for(int i = 0; i < domLettersC.used; i++){
+            if(c == domLettersC.data[i]){
+              isIn = true;
+              break;
+            }
+          }
+          if(!isIn){
+            insertArray(domLettersC, char, c);
+            insertLetterInTreeView(c, "", "");
+            n--;
+          }
+        } else {
+          break;
+        }
+      }
+    } else if(n < domLettersC.used) {
+      GtkTreePath *path;
+      for(; n < domLettersC.used; domLettersC.used--){
+        path = gtk_tree_path_new_from_indices(domLettersC.used-1, -1);
+        if(gtk_tree_model_get_iter(GTK_TREE_MODEL(store), &iter, path)){
+          gtk_list_store_remove(store, &iter);
+        }
+      }
+      gtk_tree_path_free(path);
+      for(int i = n; i < domTraitsC.size; i++){
+        if(domTraitsC.data[i].data){
+          freeArray(domTraitsC.data[i]);
+          Array_char empty = {NULL, 0, 0};
+          domTraitsC.data[i] = empty;
+          domTraitsC.used--;
+        }
+      }
+      for(int i = n; i < recTraitsC.size; i++){
+        if(recTraitsC.data[i].data){
+          freeArray(recTraitsC.data[i]);
+          Array_char empty = {NULL, 0, 0};
+          recTraitsC.data[i] = empty;
+          recTraitsC.used--;
+        }
+      }
     }
+  } else {
+    messagesWindow("Number of traits cannot be empty");
+  }
+}
 
-    if(checkError == 0){
-      gtk_widget_show_all (loadError);
+
+void on_btn_edit_clicked(GtkButton *b){
+  if(tvsReady){
+    traitSaved = false;
+    gchar *value;
+    gchar *value2;
+    GtkTreeModel *model;
+    gtk_tree_selection_get_selected(tvs_selection,&model, &iterTVS);
+    gtk_tree_model_get(model, &iterTVS, COL_DOMINANT, &value,COL_RECESIVE, &value2, -1);
+    for(int i = 0; i < domLettersC.used; i++){
+      if(value[0] == domLettersC.data[i]){
+        indexTV = i;
+      }
     }
+    if(indexTV != -1){
+      gtk_entry_set_text(GTK_ENTRY(txt_dominantLetter), value);
+      if(indexTV < domTraitsC.used){
+        if(domTraitsC.data[indexTV].data){
+          gtk_entry_set_text(GTK_ENTRY(txt_dominantTrait), domTraitsC.data[indexTV].data);
+        } else {
+          gtk_entry_set_text(GTK_ENTRY(txt_dominantTrait), "");
+        }
+      } else {
+        gtk_entry_set_text(GTK_ENTRY(txt_dominantTrait), "");
+      }
+      if(indexTV < recTraitsC.used){
+        if(recTraitsC.data[indexTV].data){
+          gtk_entry_set_text(GTK_ENTRY(txt_recessiveTrait), recTraitsC.data[indexTV].data);
+        } else {
+          gtk_entry_set_text(GTK_ENTRY(txt_recessiveTrait), "");
+        }
+      } else {
+        gtk_entry_set_text(GTK_ENTRY(txt_recessiveTrait), "");
+      }
+    }
+  }
+}
 
+void insertLetterInTreeView(char c, char domT[], char recT[]){
+  char d[8];
+  d[0] = c;
+  d[1] = '\0';
+  char r[8];
+  r[0] = c+32;
+  r[1] = '\0';
+  gtk_list_store_append(store, &iter);
+  gtk_list_store_set(store, &iter,COL_DOMINANT, d,COL_DOMINANTT, domT,COL_RECESIVE,r,COL_RECESIVET,recT,-1);
+}
 
+void on_txt_traits_insert_text(GtkEditable* self, gchar* new_text, gint new_text_length, int position, gpointer user_data){
+  traitSaved = false;
+  if(!isalpha(new_text[new_text_length-1]) && new_text[new_text_length-1] != 32){
+    g_signal_stop_emission_by_name (G_OBJECT(self), "insert_text");
+  }
+}
+
+void on_txt_nFeatures_insert_text(GtkEditable* self, gchar* new_text, gint new_text_length, int position, gpointer user_data){
+  if(new_text[new_text_length-1] < '1' || new_text[new_text_length-1] > '7'){
+    g_signal_stop_emission_by_name (G_OBJECT(self), "insert_text");
+  }
+}
+
+void on_txt_dominantLetter_insert_text(GtkEditable* self, gchar* new_text, gint new_text_length, int position, gpointer user_data){
+  if(new_text[new_text_length-1] < 'A' || new_text[new_text_length-1] > 'Z'){
+    g_signal_stop_emission_by_name (G_OBJECT(self), "insert_text");
+  } else {
+    if(!blockOther){
+      blockOther = true;
+      char c[2];
+      c[0] = new_text[new_text_length-1] + 32;
+      c[1] = '\0';
+      gtk_entry_set_text(GTK_ENTRY(txt_recessiveLetter), c);
+    } else {
+      blockOther = false;
+    }
+  }
+}
+
+void on_txt_recessiveLetter_insert_text(GtkEditable* self, gchar* new_text, gint new_text_length, int position, gpointer user_data){
+  if(new_text[new_text_length-1] < 'a' || new_text[new_text_length-1] > 'z'){
+    g_signal_stop_emission_by_name (G_OBJECT(self), "insert_text");
+  } else {
+    if(!blockOther){
+      blockOther = true;
+      char c[2];
+      c[0] = new_text[new_text_length-1] - 32;
+      c[1] = '\0';
+      gtk_entry_set_text(GTK_ENTRY(txt_dominantLetter), c);
+    } else {
+      blockOther = false;
+    }
+  }
+}
+
+void on_btn_saveTrait_clicked(GtkButton *b){
+  if(!traitSaved){
+    doneGenotypes = false;
+    traitSaved = true;
+    if(indexTV > -1){
+      if(indexTV < domLettersC.used){
+        int dL = gtk_entry_get_text_length(GTK_ENTRY(txt_dominantLetter));
+        int dTL = gtk_entry_get_text_length(GTK_ENTRY(txt_dominantTrait));
+        int rL = gtk_entry_get_text_length(GTK_ENTRY(txt_recessiveLetter));
+        int rTL = gtk_entry_get_text_length(GTK_ENTRY(txt_recessiveTrait));
+        if(dL > 0 && dTL > 0 && rL > 0 && rTL > 0){
+          bool inDLC = false;
+          const gchar* d = gtk_entry_get_text(GTK_ENTRY(txt_dominantLetter));
+          const gchar* dT = gtk_entry_get_text(GTK_ENTRY(txt_dominantTrait));
+          const gchar* r = gtk_entry_get_text(GTK_ENTRY(txt_recessiveLetter));
+          const gchar* rT = gtk_entry_get_text(GTK_ENTRY(txt_recessiveTrait));
+
+          for(int i = 0; i < domLettersC.used; i++){
+            if(i != indexTV && d[0] == domLettersC.data[i]){
+              inDLC = true;
+              break;
+            }
+          }
+          if(inDLC){
+            messagesWindow("Letter is already in list of traits");
+          } else {
+            Array_char dTNew;
+            initArray(dTNew, char, dTL+1);
+            for(int i = 0; i < dTL; i++){
+              insertArray(dTNew, char, dT[i]);
+            }
+            if(dTNew.data[dTNew.used-1] != '\0'){
+              insertArray(dTNew, char, '\0');
+            }
+            Array_char rTNew;
+            initArray(rTNew, char, rTL+1);
+            for(int i = 0; i < rTL; i++){
+              insertArray(rTNew, char, rT[i]);
+            }
+            if(rTNew.data[rTNew.used-1] != '\0'){
+              insertArray(rTNew, char, '\0');
+            }
+            if(domTraitsC.data[indexTV].data){
+              freeArray(domTraitsC.data[indexTV]);
+              domTraitsC.used--;
+            }
+            if(recTraitsC.data[indexTV].data){
+              freeArray(recTraitsC.data[indexTV]);
+              recTraitsC.used--;
+            }
+            domTraitsC.data[indexTV] = dTNew;
+            domTraitsC.used++;
+            recTraitsC.data[indexTV] = rTNew;
+            recTraitsC.used++;
+            domLettersC.data[indexTV] = d[0];
+            gtk_list_store_set(store, &iterTVS,COL_DOMINANT, d,COL_DOMINANTT, dT,COL_RECESIVE,r,COL_RECESIVET,rT,-1);
+          }
+          
+        } else {
+          messagesWindow("All entries must be filled");
+        }
+      }
+    } else {
+      messagesWindow("No trait is selected");
+    }
+  }
 }
 
 void on_stack_set_focus_child(GtkContainer* container, GtkWidget* child){
@@ -441,11 +673,12 @@ void on_stack_set_focus_child(GtkContainer* container, GtkWidget* child){
 }
 
 void fillParentsCbx(){
-  if(!doneParentsCbx){
+  if(!doneParentsCbx && doneGenotypes){
     lastParent = 0;
     parActualPage = 1;
     parTotPage = 1;
     doneParentsCbx = true;
+    doneGenotypes = false;
     if(strList.used > 0){
       GtkListStore *liststoreF;
       GtkListStore *liststoreM;
@@ -479,7 +712,7 @@ void fillParentsCbx(){
 }
 
 void fillGridGenotypes(){
-  if(!doneGenotypes){
+  if(!doneGenotypes && domLettersC.used > 0 && domLettersC.used == domTraitsC.used && domTraitsC.used == recTraitsC.used){
     lastParent = 0;
     parActualPage = 1;
     parTotPage = 1;
@@ -620,6 +853,7 @@ void changeRole(GtkToggleButton* w, enum Role r){
   n = strtol(name, &name, 10);
   roles.data[n] = r;
   doneParentsCbx = false;
+  mendelFilled = false;
 }
 
 void on_father_toggled(GtkToggleButton* w){
@@ -635,12 +869,21 @@ void on_mother_toggled(GtkToggleButton* w){
 }
 
 void fillMendelGrid(gchar *fatherTxt, gchar *motherTxt){
-  int maxLet = strlen(fatherTxt)/2;
-  int total = (int)pow(2.0, (double)maxLet);
-  createMendelHeaders(fatherTxt, motherTxt, maxLet, total);
-  createAllDescendants(total);
-  createColors();
-  fillMendelGridAux();
+  if(!mendelFilled){
+    mendelFilled = true;
+    int maxLet = strlen(fatherTxt)/2;
+    int total = (int)pow(2.0, (double)maxLet);
+    if(headersMendelX.used > 0){
+      freeArrayP(headersMendelX);
+      freeArrayP(headersMendelY);
+      initArrayP(headersMendelX, Array_char, total);
+      initArrayP(headersMendelY, Array_char, total);
+    }
+    createMendelHeaders(fatherTxt, motherTxt, maxLet, total);
+    createAllDescendants(total);
+    createColors();
+    fillMendelGridAux();
+  }
 }
 
 void fillMendelGridAux(){
@@ -749,6 +992,14 @@ void createMendelGrid(){
   }
   gtk_grid_set_row_spacing(GTK_GRID(grid_mendel), 10);
   gtk_grid_set_column_spacing(GTK_GRID(grid_mendel), 10);
+}
+
+void on_trait_changed(){
+  traitSaved = false;
+}
+
+void on_parent_changed(){
+  mendelFilled = false;
 }
 
 void createMendelHeaders(gchar *fatherTxt, gchar *motherTxt, int maxLet, int total){
@@ -946,7 +1197,7 @@ void fillPercentages(){
       }
       sum += colorsCount.data[i];
     }
-    initArray(percentages, Array_char, colorsCount.used);
+    initArrayP(percentages, Array_char, colorsCount.used);
     for(int i = 0; i < maxColorsShow; i++){
       char percStr[10] = "";
       if(lastColorP < colorsUsed.used){
@@ -1121,6 +1372,26 @@ void on_btn_nextPa_clicked(GtkButton *b){
     fillGridGenotypesAux();
   }
 }
+
+void messagesWindow(char m[]){
+  builder3 = gtk_builder_new();
+  gtk_builder_add_from_file(builder3, "glade/messages.glade", NULL);
+
+  GtkWidget *messages_window = GTK_WIDGET(gtk_builder_get_object(builder3, "messages_window"));
+  gtk_window_resize (GTK_WINDOW(messages_window),350, 200);
+  gtk_window_set_transient_for(GTK_WINDOW(messages_window), GTK_WINDOW(window));
+  gtk_window_set_modal(GTK_WINDOW(messages_window), TRUE);
+  gtk_builder_connect_signals(builder3, NULL);
+
+  GtkWidget *lbl_message = GTK_WIDGET(gtk_builder_get_object(builder3, "lbl_message"));
+  gtk_label_set_text(GTK_LABEL(lbl_message), m);  
+  gtk_widget_show(messages_window);
+  gtk_main();  
+}
+
+void on_messages_window_destroy(){
+  g_object_unref(builder3);
+  gtk_main_quit();
+}
+
 //https://www.youtube.com/watch?v=SvEBHBRept8&list=PLmMgHNtOIstZEvqYJncYUx52n8_OV0uWy&index=25
-
-
